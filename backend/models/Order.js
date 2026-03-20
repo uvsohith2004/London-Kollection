@@ -31,12 +31,32 @@ const orderSchema = new mongoose.Schema(
     },
     currency: {
       type: String,
+      default: "KWD",
+    },
+    displayCurrency: {
+      type: String,
+      default: "KWD",
+    },
+    paymentCurrency: {
+      type: String,
       default: "INR",
+    },
+    paymentAmount: {
+      type: Number,
+      default: null,
+    },
+    exchangeRate: {
+      type: Number,
+      default: null,
     },
     paymentMethod: {
       type: String,
       enum: ["cod", "online", "razorpay"],
       default: "cod",
+    },
+    paymentProviderMethod: {
+      type: String,
+      default: "",
     },
     razorpayOrderId: {
       type: String,
@@ -85,6 +105,10 @@ const orderSchema = new mongoose.Schema(
     paymentFailureReason: {
       type: String,
       default: "",
+    },
+    adminPaymentSuccessEmailSentAt: {
+      type: Date,
+      default: null,
     },
     paidAt: Date,
   },

@@ -6,24 +6,23 @@ import Product from "../models/Product.js";
 import User from "../models/User.js";
 import {
   createRazorpayOrder,
+  fetchRazorpayPayment,
   getRazorpayPublicConfig,
   verifyRazorpaySignature,
 } from "../services/paymentService.js";
-import { sendOrderEmail } from "../services/mailService.js";
+import { sendAdminPaymentSuccessEmail, sendOrderEmail } from "../services/mailService.js";
+import {
+  convertKwdToInr,
+  convertKwdToInrPaise,
+  getDisplayCurrency,
+  getKwdToInrRate,
+  getPaymentCurrency,
+} from "../utils/currency.js";
+import { normalizePaymentMethod } from "../utils/paymentMethod.js";
 
 const router = express.Router();
 
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
-
-const normalizePaymentMethod = (paymentMethod) => {
-  const normalizedMethod = String(paymentMethod || "cod").toLowerCase();
-
-  if (normalizedMethod === "online") {
-    return "razorpay";
-  }
-
-  return normalizedMethod;
-};
 
 const buildReceipt = (userId) => {
   const userIdShort = String(userId).slice(-6);
@@ -100,7 +99,7 @@ router.post("/create", verifyAccessToken, async (req, res, next) => {
       });
     }
 
-    const roundedTotalPrice = Number(totalPrice.toFixed(2));
+    const roundedTotalPrice = Number(totalPrice.toFixed(3));
 
     if (roundedTotalPrice <= 0) {
       const error = new Error("Order amount must be greater than 0");
@@ -130,21 +129,31 @@ router.post("/create", verifyAccessToken, async (req, res, next) => {
         throw error;
       }
 
-      const amountInPaise = Math.round(roundedTotalPrice * 100);
+      const amountInPaise = convertKwdToInrPaise(roundedTotalPrice);
       const receipt = buildReceipt(userId);
 
       razorpayOrder = await createRazorpayOrder(amountInPaise, receipt, {
         userId,
         userEmail: req.user.email,
         items: String(orderProducts.length),
+        displayCurrency: getDisplayCurrency(),
+        paymentCurrency: getPaymentCurrency(),
       });
     }
+
+    const paymentAmount = normalizedMethod === "razorpay"
+      ? convertKwdToInr(roundedTotalPrice)
+      : roundedTotalPrice;
 
     const order = await Order.create({
       userId,
       products: orderProducts,
       totalPrice: roundedTotalPrice,
-      currency: "INR",
+      currency: getDisplayCurrency(),
+      displayCurrency: getDisplayCurrency(),
+      paymentCurrency: normalizedMethod === "razorpay" ? getPaymentCurrency() : getDisplayCurrency(),
+      paymentAmount,
+      exchangeRate: getKwdToInrRate(),
       paymentMethod: normalizedMethod,
       paymentStatus: "pending",
       orderStatus: "processing",
@@ -162,6 +171,8 @@ router.post("/create", verifyAccessToken, async (req, res, next) => {
       for (const item of orderProducts) {
         await Product.decrementStock(item.productId, item.quantity);
       }
+
+      order.paymentStatus = "pending";
     }
 
     console.log("[ORDER] Order saved in database", {
@@ -170,11 +181,9 @@ router.post("/create", verifyAccessToken, async (req, res, next) => {
       paymentStatus: order.paymentStatus,
     });
 
-    try {
-      await sendOrderEmail(order);
-    } catch (mailError) {
+    Promise.resolve(sendOrderEmail(order)).catch((mailError) => {
       console.error("[MAIL] Email send failed", mailError.message);
-    }
+    });
 
     const responsePayload = {
       success: true,
@@ -189,6 +198,10 @@ router.post("/create", verifyAccessToken, async (req, res, next) => {
         currency: razorpayOrder.currency,
         orderId: razorpayOrder.id,
         receipt: razorpayOrder.receipt,
+        displayCurrency: getDisplayCurrency(),
+        displayAmount: roundedTotalPrice,
+        paymentCurrency: getPaymentCurrency(),
+        paymentAmount,
       };
 
       console.log("[PAYMENT] Returning Razorpay order to frontend", {
@@ -254,9 +267,19 @@ router.post("/verify", verifyAccessToken, async (req, res, next) => {
 
     order.paymentStatus = "paid";
     order.paymentMethod = "razorpay";
+    order.paymentCurrency = getPaymentCurrency();
+    order.paymentAmount = convertKwdToInr(order.totalPrice);
     order.razorpayPaymentId = razorpay_payment_id;
     order.razorpaySignature = razorpay_signature;
     order.paidAt = new Date();
+
+    try {
+      const paymentDetails = await fetchRazorpayPayment(razorpay_payment_id);
+      order.paymentProviderMethod = paymentDetails?.method || order.paymentProviderMethod;
+    } catch (paymentFetchError) {
+      console.error("[PAYMENT] Unable to fetch payment method details", paymentFetchError.message);
+    }
+
     await order.save();
 
     console.log("[PAYMENT] Database updated", {
@@ -267,6 +290,18 @@ router.post("/verify", verifyAccessToken, async (req, res, next) => {
 
     for (const item of order.products) {
       await Product.decrementStock(item.productId, item.quantity);
+    }
+
+    if (!order.adminPaymentSuccessEmailSentAt) {
+      const emailSent = await sendAdminPaymentSuccessEmail({
+        ...order.toObject(),
+        userEmail: req.user.email,
+      });
+
+      if (emailSent) {
+        order.adminPaymentSuccessEmailSentAt = new Date();
+        await order.save();
+      }
     }
 
     res.status(200).json({

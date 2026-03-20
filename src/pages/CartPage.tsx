@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useCartStore } from "@/store/cartStore";
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
+import { formatKwd } from "@/lib/currency";
 
 export default function CartPage() {
   const {
@@ -76,7 +77,7 @@ export default function CartPage() {
                 </h3>
 
                 <p className="text-muted-foreground text-sm mb-4">
-                  {item.price.toFixed(3)} KWD
+                  {formatKwd(item.price)}
                 </p>
 
                 {/* Quantity Controls */}
@@ -119,7 +120,7 @@ export default function CartPage() {
 
               {/* Item Total */}
               <div className="font-display text-lg whitespace-nowrap">
-                {(item.price * item.quantity).toFixed(3)} KWD
+                {formatKwd(item.price * item.quantity)}
               </div>
             </motion.div>
           ))}
@@ -140,7 +141,7 @@ export default function CartPage() {
                 Subtotal
               </span>
               <span>
-                {subtotal().toFixed(3)} KWD
+                {formatKwd(subtotal())}
               </span>
             </div>
 
@@ -149,14 +150,14 @@ export default function CartPage() {
                 Delivery
               </span>
               <span>
-                {deliveryFee().toFixed(3)} KWD
+                {formatKwd(deliveryFee())}
               </span>
             </div>
 
             <div className="border-t border-border pt-5 flex justify-between font-display text-lg">
               <span>Total</span>
               <span>
-                {total().toFixed(3)} KWD
+                {formatKwd(total())}
               </span>
             </div>
 

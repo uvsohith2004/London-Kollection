@@ -1,5 +1,15 @@
+import crypto from "crypto";
 import User from "../models/User.js";
 import { sendResetOtpEmail } from "../services/emailService.js";
+
+const RESET_OTP_EXPIRY_MINUTES = Math.min(
+  10,
+  Math.max(5, Number(process.env.RESET_OTP_EXPIRY_MINUTES) || 10)
+);
+const RESET_OTP_RESEND_INTERVAL_SECONDS = Math.max(
+  30,
+  Number(process.env.RESET_OTP_RESEND_INTERVAL_SECONDS) || 60
+);
 
 const RESET_OTP_ERROR_MESSAGES = {
   USER_NOT_FOUND: "Invalid email or OTP",
@@ -172,29 +182,35 @@ export const forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
     const user = await User.findByEmail(email);
+    const genericResponse = {
+      success: true,
+      message: "If an account exists for this email, an OTP has been sent",
+    };
 
     if (!user) {
-      return res.status(200).json({
-        success: true,
-        message: "If an account exists for this email, an OTP has been sent",
-      });
+      return res.status(200).json(genericResponse);
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiryDate = new Date(Date.now() + 10 * 60 * 1000);
+    if (
+      user.resetPasswordOtpRequestedAt &&
+      Date.now() - new Date(user.resetPasswordOtpRequestedAt).getTime() <
+        RESET_OTP_RESEND_INTERVAL_SECONDS * 1000
+    ) {
+      return res.status(200).json(genericResponse);
+    }
+
+    const otp = crypto.randomInt(100000, 1000000).toString();
+    const expiryDate = new Date(Date.now() + RESET_OTP_EXPIRY_MINUTES * 60 * 1000);
 
     await User.setResetPasswordOtp(email, otp, expiryDate);
     await sendResetOtpEmail({
       to: email,
       name: user.name,
       otp,
-      expiresInMinutes: 10,
+      expiresInMinutes: RESET_OTP_EXPIRY_MINUTES,
     });
 
-    res.status(200).json({
-      success: true,
-      message: "If an account exists for this email, an OTP has been sent",
-    });
+    res.status(200).json(genericResponse);
   } catch (error) {
     next(error);
   }

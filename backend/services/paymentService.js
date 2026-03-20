@@ -28,9 +28,55 @@ export function getRazorpayPublicConfig() {
   };
 }
 
+export async function fetchRazorpayPayment(paymentId) {
+  if (!razorpayInstance) {
+    const error = new Error("Razorpay is not configured");
+    error.statusCode = 500;
+    error.code = "RAZORPAY_NOT_CONFIGURED";
+    throw error;
+  }
+
+  if (!paymentId) {
+    const error = new Error("Razorpay payment ID is required");
+    error.statusCode = 400;
+    error.code = "RAZORPAY_PAYMENT_ID_REQUIRED";
+    throw error;
+  }
+
+  try {
+    const payment = await razorpayInstance.payments.fetch(paymentId);
+
+    console.log("[PAYMENT] Razorpay payment fetched", {
+      paymentId: payment?.id,
+      method: payment?.method,
+      status: payment?.status,
+    });
+
+    return payment;
+  } catch (sdkError) {
+    const normalizedError = new Error(
+      sdkError?.error?.description ||
+        sdkError?.description ||
+        sdkError?.message ||
+        "Failed to fetch Razorpay payment details"
+    );
+
+    normalizedError.name = sdkError?.name || "RazorpayPaymentFetchError";
+    normalizedError.code =
+      sdkError?.error?.code || sdkError?.code || "RAZORPAY_PAYMENT_FETCH_FAILED";
+    normalizedError.statusCode =
+      sdkError?.statusCode || sdkError?.error?.statusCode || 502;
+
+    throw normalizedError;
+  }
+}
+
 export async function createRazorpayOrder(amountInPaise, receipt, notes = {}) {
   if (!razorpayInstance) {
-    throw new Error("Razorpay is not configured");
+    const error = new Error("Razorpay is not configured");
+    error.statusCode = 500;
+    error.code = "RAZORPAY_NOT_CONFIGURED";
+    throw error;
   }
 
   console.log("[PAYMENT] Creating Razorpay order", {
@@ -39,19 +85,44 @@ export async function createRazorpayOrder(amountInPaise, receipt, notes = {}) {
     receipt,
   });
 
-  const order = await razorpayInstance.orders.create({
-    amount: amountInPaise,
-    currency: "INR",
-    receipt,
-    notes,
-  });
+  try {
+    const order = await razorpayInstance.orders.create({
+      amount: amountInPaise,
+      currency: "INR",
+      receipt,
+      notes,
+    });
 
-  console.log("[PAYMENT] Razorpay order created", {
-    razorpayOrderId: order.id,
-    amount: order.amount,
-  });
+    console.log("[PAYMENT] Razorpay order created", {
+      razorpayOrderId: order.id,
+      amount: order.amount,
+    });
 
-  return order;
+    return order;
+  } catch (sdkError) {
+    const normalizedError = new Error(
+      sdkError?.error?.description ||
+        sdkError?.description ||
+        sdkError?.message ||
+        "Failed to create Razorpay order"
+    );
+
+    normalizedError.name = sdkError?.name || "RazorpayOrderError";
+    normalizedError.code =
+      sdkError?.error?.code || sdkError?.code || "RAZORPAY_ORDER_CREATE_FAILED";
+    normalizedError.statusCode =
+      sdkError?.statusCode || sdkError?.error?.statusCode || 502;
+    normalizedError.details = sdkError?.error || null;
+
+    console.error("[PAYMENT] Razorpay order creation failed", {
+      code: normalizedError.code,
+      statusCode: normalizedError.statusCode,
+      message: normalizedError.message,
+      details: normalizedError.details,
+    });
+
+    throw normalizedError;
+  }
 }
 
 export function verifyRazorpaySignature(orderId, paymentId, signature) {
@@ -77,6 +148,7 @@ export function verifyRazorpaySignature(orderId, paymentId, signature) {
 
 export default {
   createRazorpayOrder,
+  fetchRazorpayPayment,
   verifyRazorpaySignature,
   getRazorpayPublicConfig,
 };

@@ -22,6 +22,12 @@ function statusClasses(status: string) {
   return "bg-slate-100 text-slate-700";
 }
 
+function paymentMethodLabel(paymentMethod: string) {
+  return paymentMethod === "razorpay" || paymentMethod === "online"
+    ? "Online Payment"
+    : "Cash on Delivery";
+}
+
 export default function OrderHistoryPage() {
   const location = useLocation();
   const [orders, setOrders] = useState<any[]>([]);
@@ -129,7 +135,7 @@ export default function OrderHistoryPage() {
                 <div className="flex items-center justify-between border-t border-border pt-5">
                   <div>
                     <p className="text-sm text-muted-foreground">Payment Method</p>
-                    <p className="capitalize">{order.paymentMethod || "cod"}</p>
+                    <p>{paymentMethodLabel(order.paymentMethod || "cod")}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-muted-foreground">Total Price</p>

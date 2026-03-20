@@ -1,10 +1,12 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
+import crypto from "crypto";
 
 const SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS, 10) || 10;
-const ACCESS_TOKEN_EXPIRY = "15m";
+const ACCESS_TOKEN_EXPIRY = "2h";
 const REFRESH_TOKEN_EXPIRY = "7d";
+const OTP_MAX_ATTEMPTS = 5;
 
 const userSchema = new mongoose.Schema(
   {
@@ -27,6 +29,7 @@ const userSchema = new mongoose.Schema(
     resetPasswordOtpExpiry: { type: Date, default: null, select: false },
     resetPasswordOtpAttempts: { type: Number, default: 0, select: false },
     resetPasswordOtpVerified: { type: Boolean, default: false, select: false },
+    resetPasswordOtpRequestedAt: { type: Date, default: null, select: false },
     phone: { type: String, default: "" },
     address: { type: String, default: "" },
     city: { type: String, default: "" },
@@ -47,6 +50,7 @@ const userSchema = new mongoose.Schema(
         delete ret.resetPasswordOtpExpiry;
         delete ret.resetPasswordOtpAttempts;
         delete ret.resetPasswordOtpVerified;
+        delete ret.resetPasswordOtpRequestedAt;
         return ret;
       },
     },
@@ -95,7 +99,7 @@ class User {
     const user = await UserModel.findOne({
       email: email.toLowerCase().trim(),
     })
-      .select("+password +refreshToken +resetPasswordOtp +resetPasswordOtpExpiry +resetPasswordOtpAttempts +resetPasswordOtpVerified")
+      .select("+password +refreshToken +resetPasswordOtp +resetPasswordOtpExpiry +resetPasswordOtpAttempts +resetPasswordOtpVerified +resetPasswordOtpRequestedAt")
       .lean();
 
     if (!user) return null;
@@ -110,7 +114,7 @@ class User {
     if (!mongoose.Types.ObjectId.isValid(id)) return null;
 
     const user = await UserModel.findById(id)
-      .select("-password -refreshToken -resetPasswordOtp -resetPasswordOtpExpiry -resetPasswordOtpAttempts -resetPasswordOtpVerified")
+      .select("-password -refreshToken -resetPasswordOtp -resetPasswordOtpExpiry -resetPasswordOtpAttempts -resetPasswordOtpVerified -resetPasswordOtpRequestedAt")
       .lean();
 
     return toSafeUser(user);
@@ -128,7 +132,7 @@ class User {
       new: true,
       runValidators: true,
     })
-      .select("-password -refreshToken -resetPasswordOtp -resetPasswordOtpExpiry -resetPasswordOtpAttempts -resetPasswordOtpVerified")
+      .select("-password -refreshToken -resetPasswordOtp -resetPasswordOtpExpiry -resetPasswordOtpAttempts -resetPasswordOtpVerified -resetPasswordOtpRequestedAt")
       .lean();
 
     return toSafeUser(user);
@@ -138,10 +142,14 @@ class User {
     if (!refreshToken) return null;
 
     const user = await UserModel.findOne({ refreshToken })
-      .select("-password -refreshToken -resetPasswordOtp -resetPasswordOtpExpiry -resetPasswordOtpAttempts")
+      .select("-password -refreshToken -resetPasswordOtp -resetPasswordOtpExpiry -resetPasswordOtpAttempts -resetPasswordOtpRequestedAt")
       .lean();
 
     return toSafeUser(user);
+  }
+
+  static hashResetPasswordOtp(otp) {
+    return crypto.createHash("sha256").update(String(otp)).digest("hex");
   }
 
   static async comparePassword(plain, hashed) {
@@ -178,10 +186,11 @@ class User {
     const user = await UserModel.findOneAndUpdate(
       { email: email.toLowerCase().trim() },
       {
-        resetPasswordOtp: otp,
+        resetPasswordOtp: User.hashResetPasswordOtp(otp),
         resetPasswordOtpExpiry: expiryDate,
         resetPasswordOtpAttempts: 0,
         resetPasswordOtpVerified: false,
+        resetPasswordOtpRequestedAt: new Date(),
       },
       { new: true }
     ).lean();
@@ -198,19 +207,19 @@ class User {
   static async verifyResetPasswordOtp(email, otp) {
     const user = await UserModel.findOne({
       email: email.toLowerCase().trim(),
-    }).select("+resetPasswordOtp +resetPasswordOtpExpiry +resetPasswordOtpAttempts +resetPasswordOtpVerified");
+    }).select("+resetPasswordOtp +resetPasswordOtpExpiry +resetPasswordOtpAttempts +resetPasswordOtpVerified +resetPasswordOtpRequestedAt");
 
     if (!user) return { success: false, reason: "USER_NOT_FOUND" };
     if (!user.resetPasswordOtp || !user.resetPasswordOtpExpiry) {
       return { success: false, reason: "OTP_NOT_REQUESTED" };
     }
-    if (user.resetPasswordOtpAttempts >= 5) {
+    if (user.resetPasswordOtpAttempts >= OTP_MAX_ATTEMPTS) {
       return { success: false, reason: "OTP_ATTEMPTS_EXCEEDED" };
     }
     if (user.resetPasswordOtpExpiry.getTime() < Date.now()) {
       return { success: false, reason: "OTP_EXPIRED" };
     }
-    if (user.resetPasswordOtp !== otp) {
+    if (user.resetPasswordOtp !== User.hashResetPasswordOtp(otp)) {
       user.resetPasswordOtpAttempts += 1;
       await user.save();
       return { success: false, reason: "OTP_INVALID" };
@@ -232,7 +241,7 @@ class User {
   static async resetPassword(email, newPassword) {
     const user = await UserModel.findOne({
       email: email.toLowerCase().trim(),
-    }).select("+password +resetPasswordOtp +resetPasswordOtpExpiry +resetPasswordOtpAttempts +resetPasswordOtpVerified");
+    }).select("+password +resetPasswordOtp +resetPasswordOtpExpiry +resetPasswordOtpAttempts +resetPasswordOtpVerified +resetPasswordOtpRequestedAt");
 
     if (!user) return null;
 
@@ -241,6 +250,7 @@ class User {
     user.resetPasswordOtpExpiry = null;
     user.resetPasswordOtpAttempts = 0;
     user.resetPasswordOtpVerified = false;
+    user.resetPasswordOtpRequestedAt = null;
     await user.save();
 
     return {

@@ -5,9 +5,9 @@ import useAuthStore from "@/store/authStore";
 import { toast } from "sonner";
 import { Loader2, MessageCircle } from "lucide-react";
 import api from "@/services/api";
-import { formatKwd } from "@/lib/currency";
+import { convertKwdToInr, formatInr, formatKwd } from "@/lib/currency";
 
-const WHATSAPP_NUMBER = "96599999999";
+const WHATSAPP_NUMBER = "9885058098";
 
 declare global {
   interface Window {
@@ -17,6 +17,43 @@ declare global {
 
 function isValidMongoDBObjectId(id: string): boolean {
   return /^[0-9a-f]{24}$/i.test(id || "");
+}
+
+function normalizeContactNumber(contact: string) {
+  const digitsOnly = String(contact || "").replace(/\D/g, "");
+
+  if (!digitsOnly) {
+    return "";
+  }
+
+  if (digitsOnly.startsWith("91") && digitsOnly.length === 12) {
+    return `+${digitsOnly}`;
+  }
+
+  if (digitsOnly.length === 10) {
+    return `+91${digitsOnly}`;
+  }
+
+  return contact.startsWith("+") ? contact : `+${digitsOnly}`;
+}
+
+function getPaymentFailureMessage(failureResponse: any) {
+  const reason = String(failureResponse?.error?.reason || "").toLowerCase();
+  const description = failureResponse?.error?.description;
+
+  if (reason.includes("upi") || reason.includes("collect")) {
+    return "UPI payment is currently unavailable for this attempt. Please try another UPI app or use card / netbanking.";
+  }
+
+  if (reason.includes("bank")) {
+    return "Your bank is not supporting this payment attempt right now. Please try another method.";
+  }
+
+  if (reason.includes("limit")) {
+    return "The selected payment method has hit a limit. Please retry with another UPI app or use card / netbanking.";
+  }
+
+  return description || "Payment failed. Please try another payment method.";
 }
 
 async function loadRazorpayCheckout() {
@@ -53,6 +90,7 @@ export default function CheckoutPage() {
   const checkoutItems = useMemo(() => (buyNowItem ? [buyNowItem] : items), [buyNowItem, items]);
 
   const [loading, setLoading] = useState(false);
+  const [razorpayReady, setRazorpayReady] = useState(false);
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -89,6 +127,26 @@ export default function CheckoutPage() {
     loadProfile();
   }, [user]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    loadRazorpayCheckout()
+      .then((loaded) => {
+        if (isMounted) {
+          setRazorpayReady(loaded && Boolean(window.Razorpay));
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setRazorpayReady(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const subtotal = checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const deliveryFee = checkoutItems.length > 0 ? 1 : 0;
   const total = subtotal + deliveryFee;
@@ -117,9 +175,11 @@ export default function CheckoutPage() {
   };
 
   const handleOnlinePayment = async (response: any) => {
-    const scriptLoaded = await loadRazorpayCheckout();
+    if (!response?.payment?.key || !response?.payment?.orderId || !response?.payment?.amount) {
+      throw new Error("Invalid payment configuration received from server");
+    }
 
-    if (!scriptLoaded || !window.Razorpay) {
+    if (!razorpayReady || !window.Razorpay) {
       throw new Error("Razorpay checkout failed to load");
     }
 
@@ -130,13 +190,54 @@ export default function CheckoutPage() {
       order_id: response.payment.orderId,
       name: "London Collection",
       description: "Secure order payment",
+      method: {
+        upi: true,
+        card: true,
+        netbanking: true,
+        wallet: true,
+        emi: true,
+        paylater: true,
+      },
+      config: {
+  display: {
+    language: "en",
+    sequence: ["block.upi_qr", "block.upi", "block.card", "block.netbanking"],
+    blocks: {
+      upi_qr: {
+        name: "Pay via QR Code",
+        instruments: [{ method: "upi", flows: ["qr"] }],
+      },
+      upi: {
+        name: "Pay via UPI",
+        instruments: [{ method: "upi", flows: ["collect", "intent"] }],
+      },
+      card: {
+        name: "Pay via Card",
+        instruments: [{ method: "card" }],
+      },
+      netbanking: {
+        name: "Pay via Netbanking",
+        instruments: [{ method: "netbanking" }],
+      },
+    },
+    preferences: {
+      show_default_blocks: false, // ✅ Use custom blocks above
+    },
+  },
+},
       prefill: {
         name: form.name,
         email: user?.email || "",
-        contact: form.phone,
+        contact: normalizeContactNumber(form.phone),
+      },
+      readonly: {
+        email: Boolean(user?.email),
       },
       notes: {
         address: `${form.address}, ${form.city}`,
+      },
+      retry: {
+        enabled: true,
       },
       handler: async (paymentResponse: any) => {
         try {
@@ -157,6 +258,7 @@ export default function CheckoutPage() {
         }
       },
       modal: {
+        confirm_close: true,
         ondismiss: async () => {
           try {
             await api.reportPaymentFailure({
@@ -185,7 +287,7 @@ export default function CheckoutPage() {
         console.error("Payment failure report failed", error);
       }
 
-      toast.error(failureResponse.error?.description || "Payment failed");
+      toast.error(getPaymentFailureMessage(failureResponse));
     });
 
     razorpay.open();
@@ -213,6 +315,11 @@ export default function CheckoutPage() {
 
     try {
       setLoading(true);
+
+      if (paymentMethod === "online" && !razorpayReady) {
+        toast.error("Payment gateway is still loading. Please try again in a moment.");
+        return;
+      }
 
       const response = await api.createOrder({
         products: checkoutItems.map((item) => ({
@@ -356,13 +463,19 @@ export default function CheckoutPage() {
             </div>
           </div>
 
+          {paymentMethod === "online" && (
+            <p className="mt-4 text-xs leading-5 text-gray-500">
+              You will pay {formatInr(convertKwdToInr(total))} via Razorpay. Store prices remain in KWD.
+            </p>
+          )}
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (paymentMethod === "online" && !razorpayReady)}
             className="mt-10 flex w-full items-center justify-center gap-2 rounded-xl bg-black py-4 text-sm text-white transition hover:bg-gray-800"
           >
             {loading && <Loader2 size={16} className="animate-spin" />}
-            {loading ? "Processing..." : "Place Order"}
+            {loading ? "Processing..." : paymentMethod === "online" && !razorpayReady ? "Loading Payment Gateway..." : "Place Order"}
           </button>
 
           <a

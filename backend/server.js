@@ -54,6 +54,17 @@ console.log("[SERVER] Configuration:", {
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        "script-src": ["'self'", "'unsafe-inline'", "https://checkout.razorpay.com"],
+        "frame-src": ["'self'", "https://api.razorpay.com", "https://checkout.razorpay.com"],
+        "connect-src": ["'self'", "https://api.razorpay.com", "https://checkout.razorpay.com"],
+        "img-src": ["'self'", "data:", "https:", "blob:"],
+        "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        "font-src": ["'self'", "https://fonts.gstatic.com", "data:"],
+      },
+    },
   })
 );
 
