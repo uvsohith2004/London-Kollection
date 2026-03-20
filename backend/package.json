@@ -1,0 +1,37 @@
+{
+  "name": "london-collection-auth-api",
+  "version": "1.0.0",
+  "description": "Production-ready authentication API for London Collection",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file=.env server.js",
+    "dev": "nodemon --env-file=.env server.js",
+    "seed": "node --env-file=.env seeds/seedProducts.js"
+  },
+  "keywords": [
+    "auth",
+    "jwt",
+    "express",
+    "mongodb"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^7.2.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.0.0",
+    "nodemailer": "^6.10.1",
+    "razorpay": "^2.9.6",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
+}
