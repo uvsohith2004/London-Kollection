@@ -10,6 +10,8 @@ import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
+import paymentRoutes, { stripeWebhookHandler } from "./routes/paymentRoutes.js";
+import webhookRoutes from "./routes/webhook.js";
 
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import { connectDatabase } from "./config/database.js";
@@ -48,7 +50,14 @@ console.log("[SERVER] Configuration:", {
   PORT,
   frontendOrigins: configuredFrontendOrigins,
   isProduction,
-  razorpayConfigured: Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET),
+  stripeConfigured: Boolean(
+    (process.env.STRIPE_SECRET_KEY || process.env.Stripe_Secret_key || process.env.Secret_key) &&
+      (
+        process.env.STRIPE_PUBLISHABLE_KEY ||
+        process.env.Stripe_Publishable_key ||
+        process.env.Publishable_key
+      )
+  ),
 });
 
 app.use(
@@ -57,9 +66,9 @@ app.use(
     contentSecurityPolicy: {
       useDefaults: true,
       directives: {
-        "script-src": ["'self'", "'unsafe-inline'", "https://checkout.razorpay.com"],
-        "frame-src": ["'self'", "https://api.razorpay.com", "https://checkout.razorpay.com"],
-        "connect-src": ["'self'", "https://api.razorpay.com", "https://checkout.razorpay.com"],
+        "script-src": ["'self'", "'unsafe-inline'", "https://js.stripe.com"],
+        "frame-src": ["'self'", "https://js.stripe.com", "https://hooks.stripe.com"],
+        "connect-src": ["'self'", "https://api.stripe.com", "https://js.stripe.com"],
         "img-src": ["'self'", "data:", "https:", "blob:"],
         "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         "font-src": ["'self'", "https://fonts.gstatic.com", "data:"],
@@ -108,6 +117,8 @@ app.use(
 );
 
 app.use(cookieParser());
+app.post("/api/payments/webhook", express.raw({ type: "application/json" }), stripeWebhookHandler);
+app.use("/api/webhook", express.raw({ type: "application/json" }), webhookRoutes);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
@@ -123,6 +134,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/payments", paymentRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

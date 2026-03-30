@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import { getDisplayCurrency, getPaymentCurrency } from "../utils/currency.js";
+import { getDisplayCurrency } from "../utils/currency.js";
 import { getPaymentMethodLabel, normalizePaymentMethod } from "../utils/paymentMethod.js";
 
 const hasMailConfig = () =>
@@ -57,7 +57,6 @@ const getResolvedPaymentMethodLabel = (order) => {
 
 const buildOrderEmailText = (order, heading = "Order Received") => {
   const displayCurrency = order.displayCurrency || order.currency || getDisplayCurrency();
-  const paymentCurrency = order.paymentCurrency || getPaymentCurrency();
   const paymentMethodLabel = getResolvedPaymentMethodLabel(order);
 
   return [
@@ -72,7 +71,7 @@ const buildOrderEmailText = (order, heading = "Order Received") => {
     `Postal Code: ${order.shippingAddress?.pincode || "N/A"}`,
     `Country: ${order.shippingAddress?.country || "N/A"}`,
     `Total Amount: ${formatAmount(order.totalPrice || 0, displayCurrency)}`,
-    `Payment Amount: ${formatAmount(order.paymentAmount || 0, paymentCurrency)}`,
+    `Payment Amount: ${formatAmount(order.totalPrice || order.amount || 0, displayCurrency)}`,
     `Payment Method: ${paymentMethodLabel}`,
     `Payment Status: ${order.paymentStatus || "pending"}`,
     `Order Time: ${order.createdAt ? new Date(order.createdAt).toISOString() : new Date().toISOString()}`,
@@ -84,7 +83,6 @@ const buildOrderEmailText = (order, heading = "Order Received") => {
 
 const buildOrderEmailHtml = (order, heading = "Order Received") => {
   const displayCurrency = order.displayCurrency || order.currency || getDisplayCurrency();
-  const paymentCurrency = order.paymentCurrency || getPaymentCurrency();
   const paymentMethodLabel = getResolvedPaymentMethodLabel(order);
   const shippingAddressLines = [
     order.shippingAddress?.address,
@@ -109,7 +107,7 @@ const buildOrderEmailHtml = (order, heading = "Order Received") => {
           <p style="margin:0 0 8px;">Payment Method: ${paymentMethodLabel}</p>
           <p style="margin:0 0 8px;">Payment Status: ${order.paymentStatus || "pending"}</p>
           <p style="margin:0 0 8px;">Display Total: <strong>${formatAmount(order.totalPrice || 0, displayCurrency)}</strong></p>
-          <p style="margin:0 0 24px;">Payment Total: <strong>${formatAmount(order.paymentAmount || 0, paymentCurrency)}</strong></p>
+          <p style="margin:0 0 24px;">Payment Total: <strong>${formatAmount(order.totalPrice || order.amount || 0, displayCurrency)}</strong></p>
           <div style="padding:20px;border:1px solid #e7e5e4;border-radius:20px;background:#fafaf9;">
             ${(order.products || [])
               .map(

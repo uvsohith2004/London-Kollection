@@ -1,154 +1,253 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import Razorpay from "razorpay";
-import crypto from "crypto";
+import Stripe from "stripe";
+import {
+  convertToMinorUnit,
+  getCurrencyConfig,
+  getDisplayCurrency,
+  getPaymentCurrency,
+  normalizeRegion,
+} from "../utils/currency.js";
+import { convertAmountWithExchangeRate } from "./exchangeRateService.js";
 
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
+const STRIPE_SECRET_KEY =
+  process.env.STRIPE_SECRET_KEY ||
+  process.env.Stripe_Secret_key ||
+  process.env.Secret_key;
+const STRIPE_PUBLISHABLE_KEY =
+  process.env.STRIPE_PUBLISHABLE_KEY ||
+  process.env.Stripe_Publishable_key ||
+  process.env.Publishable_key;
+const STRIPE_WEBHOOK_SECRET =
+  process.env.STRIPE_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOKSIGNINGSECRET;
 
-const razorpayInstance =
-  RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET
-    ? new Razorpay({
-        key_id: RAZORPAY_KEY_ID,
-        key_secret: RAZORPAY_KEY_SECRET,
-      })
-    : null;
+const stripe = STRIPE_SECRET_KEY
+  ? new Stripe(STRIPE_SECRET_KEY, {
+      apiVersion: "2024-06-20",
+    })
+  : null;
 
-if (razorpayInstance) {
-  console.log("Razorpay initialized successfully");
+if (stripe) {
+  console.log("[PAYMENT] Stripe initialized successfully");
 } else {
-  console.warn("Razorpay keys missing. Payment gateway features are disabled.");
+  console.warn("[PAYMENT] Stripe keys missing. Payment features are disabled.");
 }
 
-export function getRazorpayPublicConfig() {
+const normalizeStripeError = (sdkError, fallbackMessage, fallbackCode) => {
+  const normalizedError = new Error(
+    sdkError?.message || sdkError?.raw?.message || fallbackMessage
+  );
+
+  normalizedError.name = sdkError?.name || "StripeError";
+  normalizedError.code = sdkError?.code || fallbackCode;
+  normalizedError.statusCode = sdkError?.statusCode || sdkError?.raw?.statusCode || 502;
+  normalizedError.details = sdkError?.raw || null;
+
+  return normalizedError;
+};
+
+export function ensureStripeConfigured() {
+  if (!stripe) {
+    const error = new Error("Stripe is not configured");
+    error.statusCode = 500;
+    error.code = "STRIPE_NOT_CONFIGURED";
+    throw error;
+  }
+}
+
+export function getStripePublicConfig() {
   return {
-    key: RAZORPAY_KEY_ID,
-    configured: Boolean(razorpayInstance),
+    publishableKey: STRIPE_PUBLISHABLE_KEY,
+    configured: Boolean(stripe && STRIPE_PUBLISHABLE_KEY),
   };
 }
 
-export async function fetchRazorpayPayment(paymentId) {
-  if (!razorpayInstance) {
-    const error = new Error("Razorpay is not configured");
-    error.statusCode = 500;
-    error.code = "RAZORPAY_NOT_CONFIGURED";
-    throw error;
-  }
+export async function resolvePaymentDetails({ amount, region }) {
+  const normalizedRegion = normalizeRegion(region);
+  const currencyConfig = getCurrencyConfig(normalizedRegion);
+  const displayCurrency = getDisplayCurrency(normalizedRegion);
+  const paymentCurrency = getPaymentCurrency(normalizedRegion);
+  const displayAmount = Number(
+    (Number(amount) || 0).toFixed(currencyConfig.displayDecimalPlaces)
+  );
 
-  if (!paymentId) {
-    const error = new Error("Razorpay payment ID is required");
-    error.statusCode = 400;
-    error.code = "RAZORPAY_PAYMENT_ID_REQUIRED";
-    throw error;
-  }
+  let paymentAmount = displayAmount;
+  let exchangeRateUsed = 1;
+  let exchangeBufferPercent = 0;
+  let bufferedExchangeRate = 1;
 
-  try {
-    const payment = await razorpayInstance.payments.fetch(paymentId);
-
-    console.log("[PAYMENT] Razorpay payment fetched", {
-      paymentId: payment?.id,
-      method: payment?.method,
-      status: payment?.status,
+  if (displayCurrency !== paymentCurrency) {
+    const conversion = await convertAmountWithExchangeRate({
+      amount: displayAmount,
+      baseCurrency: displayCurrency,
+      quoteCurrency: paymentCurrency,
+      quoteDecimalPlaces: currencyConfig.paymentDecimalPlaces,
     });
 
-    return payment;
-  } catch (sdkError) {
-    const normalizedError = new Error(
-      sdkError?.error?.description ||
-        sdkError?.description ||
-        sdkError?.message ||
-        "Failed to fetch Razorpay payment details"
-    );
-
-    normalizedError.name = sdkError?.name || "RazorpayPaymentFetchError";
-    normalizedError.code =
-      sdkError?.error?.code || sdkError?.code || "RAZORPAY_PAYMENT_FETCH_FAILED";
-    normalizedError.statusCode =
-      sdkError?.statusCode || sdkError?.error?.statusCode || 502;
-
-    throw normalizedError;
+    paymentAmount = conversion.convertedAmount;
+    exchangeRateUsed = conversion.exchangeRateUsed;
+    exchangeBufferPercent = conversion.bufferPercent;
+    bufferedExchangeRate = conversion.bufferedExchangeRate;
   }
+
+  const amountInMinorUnit = convertToMinorUnit(paymentAmount, normalizedRegion, "payment");
+
+  return {
+    region: normalizedRegion,
+    currency: paymentCurrency,
+    amount: paymentAmount,
+    amountInMinorUnit,
+    displayCurrency,
+    displayAmount,
+    paymentCurrency,
+    paymentAmount,
+    original_amount_kwd: displayCurrency === "KWD" ? displayAmount : null,
+    converted_amount_usd: paymentCurrency === "USD" ? paymentAmount : null,
+    exchange_rate_used: exchangeRateUsed,
+    exchange_buffer_percent: exchangeBufferPercent,
+    buffered_exchange_rate: bufferedExchangeRate,
+  };
 }
 
-export async function createRazorpayOrder(amountInPaise, receipt, notes = {}) {
-  if (!razorpayInstance) {
-    const error = new Error("Razorpay is not configured");
-    error.statusCode = 500;
-    error.code = "RAZORPAY_NOT_CONFIGURED";
+export async function createStripePaymentIntent({
+  amount,
+  region,
+  metadata = {},
+  idempotencyKey,
+  customerEmail,
+}) {
+  ensureStripeConfigured();
+
+  const payment = await resolvePaymentDetails({ amount, region });
+
+  if (payment.amount <= 0 || payment.amountInMinorUnit <= 0) {
+    const error = new Error("Payment amount must be greater than 0");
+    error.statusCode = 400;
+    error.code = "INVALID_PAYMENT_AMOUNT";
     throw error;
   }
 
-  console.log("[PAYMENT] Creating Razorpay order", {
-    amountInPaise,
-    currency: "INR",
-    receipt,
-  });
-
   try {
-    const order = await razorpayInstance.orders.create({
-      amount: amountInPaise,
-      currency: "INR",
-      receipt,
-      notes,
-    });
-
-    console.log("[PAYMENT] Razorpay order created", {
-      razorpayOrderId: order.id,
-      amount: order.amount,
-    });
-
-    return order;
-  } catch (sdkError) {
-    const normalizedError = new Error(
-      sdkError?.error?.description ||
-        sdkError?.description ||
-        sdkError?.message ||
-        "Failed to create Razorpay order"
+    const paymentIntent = await stripe.paymentIntents.create(
+      {
+        amount: payment.amountInMinorUnit,
+        currency: payment.currency.toLowerCase(),
+        automatic_payment_methods: {
+          enabled: true,
+        },
+        receipt_email: customerEmail || undefined,
+        metadata: {
+          region: payment.region,
+          display_currency: payment.displayCurrency,
+          display_amount: String(payment.displayAmount),
+          payment_currency: payment.paymentCurrency,
+          payment_amount: String(payment.paymentAmount),
+          original_amount: String(payment.displayAmount),
+          original_amount_kwd:
+            payment.original_amount_kwd !== null ? String(payment.original_amount_kwd) : "",
+          converted_amount_usd:
+            payment.converted_amount_usd !== null ? String(payment.converted_amount_usd) : "",
+          exchange_rate_used: String(payment.exchange_rate_used),
+          exchange_buffer_percent: String(payment.exchange_buffer_percent),
+          buffered_exchange_rate: String(payment.buffered_exchange_rate),
+          ...Object.fromEntries(
+            Object.entries(metadata)
+              .filter(([, value]) => value !== undefined && value !== null && value !== "")
+              .map(([key, value]) => [key, String(value)])
+          ),
+        },
+      },
+      idempotencyKey ? { idempotencyKey } : undefined
     );
 
-    normalizedError.name = sdkError?.name || "RazorpayOrderError";
-    normalizedError.code =
-      sdkError?.error?.code || sdkError?.code || "RAZORPAY_ORDER_CREATE_FAILED";
-    normalizedError.statusCode =
-      sdkError?.statusCode || sdkError?.error?.statusCode || 502;
-    normalizedError.details = sdkError?.error || null;
+    console.log("[PAYMENT] Stripe PaymentIntent created", {
+      paymentIntentId: paymentIntent.id,
+      currency: payment.currency,
+      amountInMinorUnit: payment.amountInMinorUnit,
+      region: payment.region,
+    });
 
-    console.error("[PAYMENT] Razorpay order creation failed", {
+    return {
+      clientSecret: paymentIntent.client_secret,
+      currency: payment.currency,
+      amount: payment.amount,
+      amountInMinorUnit: payment.amountInMinorUnit,
+      region: payment.region,
+      displayCurrency: payment.displayCurrency,
+      displayAmount: payment.displayAmount,
+      paymentCurrency: payment.paymentCurrency,
+      paymentAmount: payment.paymentAmount,
+      original_amount_kwd: payment.original_amount_kwd,
+      converted_amount_usd: payment.converted_amount_usd,
+      exchange_rate_used: payment.exchange_rate_used,
+      exchange_buffer_percent: payment.exchange_buffer_percent,
+      paymentIntent,
+    };
+  } catch (sdkError) {
+    const normalizedError = normalizeStripeError(
+      sdkError,
+      "Failed to create Stripe PaymentIntent",
+      "STRIPE_PAYMENT_INTENT_CREATE_FAILED"
+    );
+
+    console.error("[PAYMENT] Stripe PaymentIntent creation failed", {
       code: normalizedError.code,
       statusCode: normalizedError.statusCode,
       message: normalizedError.message,
-      details: normalizedError.details,
     });
 
     throw normalizedError;
   }
 }
 
-export function verifyRazorpaySignature(orderId, paymentId, signature) {
-  if (!RAZORPAY_KEY_SECRET) {
-    return false;
+export async function fetchStripePaymentIntent(paymentIntentId) {
+  ensureStripeConfigured();
+
+  if (!paymentIntentId) {
+    const error = new Error("Stripe PaymentIntent ID is required");
+    error.statusCode = 400;
+    error.code = "STRIPE_PAYMENT_INTENT_ID_REQUIRED";
+    throw error;
   }
 
-  const generatedSignature = crypto
-    .createHmac("sha256", RAZORPAY_KEY_SECRET)
-    .update(`${orderId}|${paymentId}`)
-    .digest("hex");
+  try {
+    return await stripe.paymentIntents.retrieve(paymentIntentId);
+  } catch (sdkError) {
+    throw normalizeStripeError(
+      sdkError,
+      "Failed to fetch Stripe PaymentIntent",
+      "STRIPE_PAYMENT_INTENT_FETCH_FAILED"
+    );
+  }
+}
 
-  const isValid = generatedSignature === signature;
+export function constructStripeWebhookEvent(payload, signature) {
+  ensureStripeConfigured();
 
-  console.log("[PAYMENT] Signature verification result", {
-    razorpayOrderId: orderId,
-    razorpayPaymentId: paymentId,
-    isValid,
-  });
+  if (!STRIPE_WEBHOOK_SECRET) {
+    const error = new Error("Stripe webhook secret is not configured");
+    error.statusCode = 500;
+    error.code = "STRIPE_WEBHOOK_NOT_CONFIGURED";
+    throw error;
+  }
 
-  return isValid;
+  try {
+    return stripe.webhooks.constructEvent(payload, signature, STRIPE_WEBHOOK_SECRET);
+  } catch (sdkError) {
+    throw normalizeStripeError(
+      sdkError,
+      "Invalid Stripe webhook signature",
+      "STRIPE_WEBHOOK_SIGNATURE_INVALID"
+    );
+  }
 }
 
 export default {
-  createRazorpayOrder,
-  fetchRazorpayPayment,
-  verifyRazorpaySignature,
-  getRazorpayPublicConfig,
+  getStripePublicConfig,
+  ensureStripeConfigured,
+  resolvePaymentDetails,
+  createStripePaymentIntent,
+  fetchStripePaymentIntent,
+  constructStripeWebhookEvent,
 };

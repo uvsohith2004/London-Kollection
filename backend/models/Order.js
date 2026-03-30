@@ -29,6 +29,16 @@ const orderSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    amount: {
+      type: Number,
+      default: null,
+    },
+    region: {
+      type: String,
+      enum: ["india", "kuwait"],
+      default: "kuwait",
+      index: true,
+    },
     currency: {
       type: String,
       default: "KWD",
@@ -45,16 +55,36 @@ const orderSchema = new mongoose.Schema(
       type: Number,
       default: null,
     },
+    original_amount_kwd: {
+      type: Number,
+      default: null,
+    },
+    converted_amount_usd: {
+      type: Number,
+      default: null,
+    },
+    exchange_rate_used: {
+      type: Number,
+      default: null,
+    },
+    exchange_buffer_percent: {
+      type: Number,
+      default: null,
+    },
     exchangeRate: {
       type: Number,
       default: null,
     },
     paymentMethod: {
       type: String,
-      enum: ["cod", "online", "razorpay"],
+      enum: ["cod", "online", "razorpay", "stripe"],
       default: "cod",
     },
     paymentProviderMethod: {
+      type: String,
+      default: "",
+    },
+    paymentProviderStatus: {
       type: String,
       default: "",
     },
@@ -72,6 +102,18 @@ const orderSchema = new mongoose.Schema(
     razorpaySignature: {
       type: String,
       sparse: true,
+    },
+    stripePaymentIntentId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
+    stripeSessionId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
     },
     paymentStatus: {
       type: String,
@@ -107,6 +149,10 @@ const orderSchema = new mongoose.Schema(
       default: "",
     },
     adminPaymentSuccessEmailSentAt: {
+      type: Date,
+      default: null,
+    },
+    stockDeductedAt: {
       type: Date,
       default: null,
     },

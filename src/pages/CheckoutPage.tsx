@@ -4,16 +4,32 @@ import { useLocation, useNavigate, Link } from "react-router-dom";
 import useAuthStore from "@/store/authStore";
 import { toast } from "sonner";
 import { Loader2, MessageCircle } from "lucide-react";
+import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
+import { loadStripe, type StripeElementsOptions } from "@stripe/stripe-js";
 import api from "@/services/api";
-import { convertKwdToInr, formatInr, formatKwd } from "@/lib/currency";
+import { formatKwd } from "@/lib/currency";
 
 const WHATSAPP_NUMBER = "9885058098";
+const CHECKOUT_SNAPSHOT_KEY = "lc-checkout-snapshot";
 
-declare global {
-  interface Window {
-    Razorpay?: any;
-  }
-}
+type PendingPayment = {
+  orderId: string;
+  clientSecret: string;
+  publishableKey: string;
+  paymentIntentId: string;
+  displayCurrency: string;
+  displayAmount: number;
+};
+
+type CheckoutSnapshot = {
+  items: Array<{
+    productId: string;
+    title: string;
+    price: number;
+    quantity: number;
+    image: string;
+  }>;
+};
 
 function isValidMongoDBObjectId(id: string): boolean {
   return /^[0-9a-f]{24}$/i.test(id || "");
@@ -37,38 +53,147 @@ function normalizeContactNumber(contact: string) {
   return contact.startsWith("+") ? contact : `+${digitsOnly}`;
 }
 
-function getPaymentFailureMessage(failureResponse: any) {
-  const reason = String(failureResponse?.error?.reason || "").toLowerCase();
-  const description = failureResponse?.error?.description;
+function formatAmountByCurrency(amount: number, currency: string) {
+  const upperCurrency = String(currency || "KWD").toUpperCase();
+  const locale = "en-KW";
+  const fractionDigits = 3;
 
-  if (reason.includes("upi") || reason.includes("collect")) {
-    return "UPI payment is currently unavailable for this attempt. Please try another UPI app or use card / netbanking.";
-  }
-
-  if (reason.includes("bank")) {
-    return "Your bank is not supporting this payment attempt right now. Please try another method.";
-  }
-
-  if (reason.includes("limit")) {
-    return "The selected payment method has hit a limit. Please retry with another UPI app or use card / netbanking.";
-  }
-
-  return description || "Payment failed. Please try another payment method.";
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: upperCurrency,
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(Number(amount || 0));
 }
 
-async function loadRazorpayCheckout() {
-  if (window.Razorpay) {
-    return true;
-  }
+async function pause(ms: number) {
+  await new Promise((resolve) => window.setTimeout(resolve, ms));
+}
 
-  return new Promise<boolean>((resolve) => {
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.async = true;
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
+function readCheckoutSnapshot(): CheckoutSnapshot | null {
+  try {
+    const rawValue = window.sessionStorage.getItem(CHECKOUT_SNAPSHOT_KEY);
+
+    if (!rawValue) {
+      return null;
+    }
+
+    const parsedValue = JSON.parse(rawValue);
+
+    if (!Array.isArray(parsedValue?.items)) {
+      return null;
+    }
+
+    return parsedValue;
+  } catch {
+    return null;
+  }
+}
+
+function writeCheckoutSnapshot(snapshot: CheckoutSnapshot | null) {
+  try {
+    if (!snapshot) {
+      window.sessionStorage.removeItem(CHECKOUT_SNAPSHOT_KEY);
+      return;
+    }
+
+    window.sessionStorage.setItem(CHECKOUT_SNAPSHOT_KEY, JSON.stringify(snapshot));
+  } catch {
+    // Ignore storage errors to avoid blocking checkout.
+  }
+}
+
+function StripePaymentForm({
+  pendingPayment,
+  customerEmail,
+  onConfirmSuccess,
+  onCancel,
+}: {
+  pendingPayment: PendingPayment;
+  customerEmail: string;
+  onConfirmSuccess: (paymentIntentId: string) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [confirming, setConfirming] = useState(false);
+
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!stripe || !elements) {
+      toast.error("Stripe checkout is still loading. Please wait a moment.");
+      return;
+    }
+
+    try {
+      setConfirming(true);
+
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        redirect: "if_required",
+        confirmParams: {
+          receipt_email: customerEmail || undefined,
+        },
+      });
+
+      if (error) {
+        await api.reportPaymentFailure({
+          paymentIntentId: pendingPayment.paymentIntentId,
+          error_description: error.message,
+          error_reason: error.type,
+        });
+
+        throw new Error(error.message || "Payment failed. Please try again.");
+      }
+
+      if (!paymentIntent?.id) {
+        throw new Error("Stripe did not return a payment reference.");
+      }
+
+      await onConfirmSuccess(paymentIntent.id);
+    } catch (error: any) {
+      toast.error(error.message || "Payment confirmation failed");
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  return (
+    <div className="rounded-3xl border border-gray-200 bg-white p-8">
+      <div className="mb-6">
+        <h2 className="text-xl font-display">Complete Payment</h2>
+        <p className="mt-2 text-sm text-gray-500">
+          Pay {formatAmountByCurrency(pendingPayment.displayAmount, pendingPayment.displayCurrency)} securely with card.
+        </p>
+      </div>
+
+      <form onSubmit={handlePaymentSubmit} className="space-y-6">
+        <PaymentElement />
+
+        <div className="flex gap-3">
+          <button
+            type="submit"
+            disabled={confirming || !stripe || !elements}
+            className="flex-1 rounded-xl bg-black py-4 text-sm text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {confirming
+              ? "Confirming Payment..."
+              : `Pay ${formatAmountByCurrency(pendingPayment.displayAmount, pendingPayment.displayCurrency)}`}
+          </button>
+
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={confirming}
+            className="rounded-xl border border-gray-300 px-6 py-4 text-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  );
 }
 
 export default function CheckoutPage() {
@@ -76,27 +201,40 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const { items, clearCart } = useCartStore();
   const { user } = useAuthStore();
+  const [checkoutSnapshot, setCheckoutSnapshot] = useState<CheckoutSnapshot | null>(() => readCheckoutSnapshot());
 
-  const buyNowItem = location.state?.product
-    ? {
-        productId: location.state.product._id || location.state.product.id,
-        title: location.state.product.title,
-        price: location.state.product.price,
-        quantity: location.state.quantity || 1,
-        image: location.state.product.images?.[0] || "",
-      }
-    : null;
+  const buyNowItem = useMemo(
+    () =>
+      location.state?.product
+        ? {
+            productId: location.state.product._id || location.state.product.id,
+            title: location.state.product.title,
+            price: location.state.product.price,
+            quantity: location.state.quantity || 1,
+            image: location.state.product.images?.[0] || "",
+          }
+        : null,
+    [location.state]
+  );
 
-  const checkoutItems = useMemo(() => (buyNowItem ? [buyNowItem] : items), [buyNowItem, items]);
+  const sourceCheckoutItems = useMemo(() => (buyNowItem ? [buyNowItem] : items), [buyNowItem, items]);
+
+  const checkoutItems = useMemo(() => {
+    if (sourceCheckoutItems.length > 0) {
+      return sourceCheckoutItems;
+    }
+
+    return checkoutSnapshot?.items || [];
+  }, [sourceCheckoutItems, checkoutSnapshot]);
 
   const [loading, setLoading] = useState(false);
-  const [razorpayReady, setRazorpayReady] = useState(false);
+  const [pendingPayment, setPendingPayment] = useState<PendingPayment | null>(null);
   const [form, setForm] = useState({
     name: "",
     phone: "",
     address: "",
     city: "",
-    country: "India",
+    country: "Kuwait",
     postalCode: "",
     notes: "",
   });
@@ -116,7 +254,7 @@ export default function CheckoutPage() {
           phone: userProfile.phone || "",
           address: userProfile.address || "",
           city: userProfile.city || "",
-          country: userProfile.country || "India",
+          country: userProfile.country || "Kuwait",
           postalCode: userProfile.postalCode || "",
         }));
       } catch (error) {
@@ -128,28 +266,45 @@ export default function CheckoutPage() {
   }, [user]);
 
   useEffect(() => {
-    let isMounted = true;
+    if (sourceCheckoutItems.length > 0) {
+      const nextSnapshot = { items: sourceCheckoutItems };
+      setCheckoutSnapshot(nextSnapshot);
+      writeCheckoutSnapshot(nextSnapshot);
+    } else if (!pendingPayment) {
+      const storedSnapshot = readCheckoutSnapshot();
+      setCheckoutSnapshot(storedSnapshot);
 
-    loadRazorpayCheckout()
-      .then((loaded) => {
-        if (isMounted) {
-          setRazorpayReady(loaded && Boolean(window.Razorpay));
-        }
-      })
-      .catch(() => {
-        if (isMounted) {
-          setRazorpayReady(false);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+      if (!storedSnapshot?.items?.length) {
+        writeCheckoutSnapshot(null);
+      }
+    }
+  }, [sourceCheckoutItems, pendingPayment]);
 
   const subtotal = checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const deliveryFee = checkoutItems.length > 0 ? 1 : 0;
   const total = subtotal + deliveryFee;
+  const estimatedOnlineTotal = total;
+
+  const stripePromise = useMemo(() => {
+    if (!pendingPayment?.publishableKey) {
+      return null;
+    }
+
+    return loadStripe(pendingPayment.publishableKey);
+  }, [pendingPayment?.publishableKey]);
+
+  const stripeOptions = useMemo<StripeElementsOptions | undefined>(() => {
+    if (!pendingPayment?.clientSecret) {
+      return undefined;
+    }
+
+    return {
+      clientSecret: pendingPayment.clientSecret,
+      appearance: {
+        theme: "stripe",
+      },
+    };
+  }, [pendingPayment?.clientSecret]);
 
   if (checkoutItems.length === 0) {
     return (
@@ -170,127 +325,64 @@ export default function CheckoutPage() {
       clearCart();
     }
 
+    setCheckoutSnapshot(null);
+    writeCheckoutSnapshot(null);
     toast.success("Order placed successfully");
     navigate(`/order-success?order=${orderId}`);
   };
 
-  const handleOnlinePayment = async (response: any) => {
-    if (!response?.payment?.key || !response?.payment?.orderId || !response?.payment?.amount) {
-      throw new Error("Invalid payment configuration received from server");
-    }
+  const waitForWebhookVerification = async (paymentIntentId: string, fallbackOrderId: string) => {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const verifyResponse = await api.verifyPayment({
+        paymentIntentId,
+      });
 
-    if (!razorpayReady || !window.Razorpay) {
-      throw new Error("Razorpay checkout failed to load");
-    }
-
-    const options = {
-      key: response.payment.key,
-      amount: response.payment.amount,
-      currency: response.payment.currency,
-      order_id: response.payment.orderId,
-      name: "London Collection",
-      description: "Secure order payment",
-      method: {
-        upi: true,
-        card: true,
-        netbanking: true,
-        wallet: true,
-        emi: true,
-        paylater: true,
-      },
-      config: {
-  display: {
-    language: "en",
-    sequence: ["block.upi_qr", "block.upi", "block.card", "block.netbanking"],
-    blocks: {
-      upi_qr: {
-        name: "Pay via QR Code",
-        instruments: [{ method: "upi", flows: ["qr"] }],
-      },
-      upi: {
-        name: "Pay via UPI",
-        instruments: [{ method: "upi", flows: ["collect", "intent"] }],
-      },
-      card: {
-        name: "Pay via Card",
-        instruments: [{ method: "card" }],
-      },
-      netbanking: {
-        name: "Pay via Netbanking",
-        instruments: [{ method: "netbanking" }],
-      },
-    },
-    preferences: {
-      show_default_blocks: false, // ✅ Use custom blocks above
-    },
-  },
-},
-      prefill: {
-        name: form.name,
-        email: user?.email || "",
-        contact: normalizeContactNumber(form.phone),
-      },
-      readonly: {
-        email: Boolean(user?.email),
-      },
-      notes: {
-        address: `${form.address}, ${form.city}`,
-      },
-      retry: {
-        enabled: true,
-      },
-      handler: async (paymentResponse: any) => {
-        try {
-          const verifyResponse = await api.verifyPayment({
-            razorpay_order_id: paymentResponse.razorpay_order_id,
-            razorpay_payment_id: paymentResponse.razorpay_payment_id,
-            razorpay_signature: paymentResponse.razorpay_signature,
-          });
-
-          if (!buyNowItem) {
-            clearCart();
-          }
-
-          toast.success("Payment completed successfully");
-          navigate(`/order-success?order=${verifyResponse.data.orderId}`);
-        } catch (error: any) {
-          toast.error(error.message || "Payment verification failed");
-        }
-      },
-      modal: {
-        confirm_close: true,
-        ondismiss: async () => {
-          try {
-            await api.reportPaymentFailure({
-              razorpay_order_id: response.payment.orderId,
-              error_description: "Customer closed Razorpay checkout",
-              error_reason: "checkout_dismissed",
-            });
-          } catch (error) {
-            console.error("Payment dismissal report failed", error);
-          }
-        },
-      },
-    };
-
-    const razorpay = new window.Razorpay(options);
-
-    razorpay.on("payment.failed", async (failureResponse: any) => {
-      try {
-        await api.reportPaymentFailure({
-          razorpay_order_id: response.payment.orderId,
-          razorpay_payment_id: failureResponse.error?.metadata?.payment_id,
-          error_description: failureResponse.error?.description,
-          error_reason: failureResponse.error?.reason,
-        });
-      } catch (error) {
-        console.error("Payment failure report failed", error);
+      if (verifyResponse?.data?.paymentStatus === "paid") {
+        return verifyResponse.data.orderId || fallbackOrderId;
       }
 
-      toast.error(getPaymentFailureMessage(failureResponse));
-    });
+      await pause(1500);
+    }
 
-    razorpay.open();
+    throw new Error("Payment was submitted, but confirmation is still pending. Please check your orders shortly.");
+  };
+
+  const handleStripePaymentReady = (response: any) => {
+    const orderId = response?.order?.id || response?.order?._id;
+    const clientSecret = response?.payment?.clientSecret;
+    const publishableKey = response?.payment?.publishableKey;
+    const paymentIntentId = response?.payment?.paymentIntentId;
+
+    if (!orderId || !clientSecret || !publishableKey || !paymentIntentId) {
+      throw new Error("Invalid Stripe payment configuration received from server");
+    }
+
+    setPendingPayment({
+      orderId,
+      clientSecret,
+      publishableKey,
+      paymentIntentId,
+      displayCurrency: response.payment.displayCurrency || response.payment.currency || "KWD",
+      displayAmount: Number(response.payment.displayAmount || response.payment.amount || 0),
+    });
+  };
+
+  const handleStripePaymentSuccess = async (paymentIntentId: string) => {
+    if (!pendingPayment) {
+      throw new Error("Payment state is missing");
+    }
+
+    const orderId = await waitForWebhookVerification(paymentIntentId, pendingPayment.orderId);
+    setPendingPayment(null);
+
+    if (!buyNowItem) {
+      clearCart();
+    }
+
+    setCheckoutSnapshot(null);
+    writeCheckoutSnapshot(null);
+    toast.success("Payment completed successfully");
+    navigate(`/order-success?order=${orderId}`);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -316,32 +408,28 @@ export default function CheckoutPage() {
     try {
       setLoading(true);
 
-      if (paymentMethod === "online" && !razorpayReady) {
-        toast.error("Payment gateway is still loading. Please try again in a moment.");
-        return;
-      }
-
       const response = await api.createOrder({
         products: checkoutItems.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
         })),
         paymentMethod,
+        region: "kuwait",
         shippingAddress: {
           name: form.name,
           email: user.email,
-          phone: form.phone,
+          phone: normalizeContactNumber(form.phone),
           address: form.address,
           city: form.city,
           state: "",
           pincode: form.postalCode,
-          country: form.country || "India",
+          country: form.country || "Kuwait",
         },
         notes: form.notes,
       });
 
       if (response.paymentRequired && response.payment) {
-        await handleOnlinePayment(response);
+        handleStripePaymentReady(response);
       } else {
         handleCashOnDeliverySuccess(response.order.id || response.order._id);
       }
@@ -409,7 +497,7 @@ export default function CheckoutPage() {
 
             <div className="space-y-4">
               {[
-                { value: "online", label: "Pay Online with Razorpay" },
+                { value: "online", label: "Pay Online with Stripe" },
                 { value: "cod", label: "Cash on Delivery" },
               ].map((method) => (
                 <label
@@ -430,6 +518,7 @@ export default function CheckoutPage() {
               ))}
             </div>
           </div>
+
         </div>
 
         <div className="sticky top-24 h-fit rounded-3xl border border-gray-200 p-10">
@@ -465,17 +554,17 @@ export default function CheckoutPage() {
 
           {paymentMethod === "online" && (
             <p className="mt-4 text-xs leading-5 text-gray-500">
-              You will pay {formatInr(convertKwdToInr(total))} via Razorpay. Store prices remain in KWD.
+              You will pay {formatKwd(estimatedOnlineTotal)}. Currency conversion is handled in the background.
             </p>
           )}
 
           <button
             type="submit"
-            disabled={loading || (paymentMethod === "online" && !razorpayReady)}
-            className="mt-10 flex w-full items-center justify-center gap-2 rounded-xl bg-black py-4 text-sm text-white transition hover:bg-gray-800"
+            disabled={loading || Boolean(pendingPayment)}
+            className="mt-10 flex w-full items-center justify-center gap-2 rounded-xl bg-black py-4 text-sm text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {loading && <Loader2 size={16} className="animate-spin" />}
-            {loading ? "Processing..." : paymentMethod === "online" && !razorpayReady ? "Loading Payment Gateway..." : "Place Order"}
+            {loading ? "Processing..." : pendingPayment ? "Complete Payment Below" : "Place Order"}
           </button>
 
           <a
@@ -489,6 +578,21 @@ export default function CheckoutPage() {
           </a>
         </div>
       </form>
+
+      {pendingPayment && stripePromise && stripeOptions && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4 py-8">
+          <div className="max-h-full w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-4 sm:p-6">
+            <Elements stripe={stripePromise} options={stripeOptions}>
+              <StripePaymentForm
+                pendingPayment={pendingPayment}
+                customerEmail={user?.email || ""}
+                onConfirmSuccess={handleStripePaymentSuccess}
+                onCancel={() => setPendingPayment(null)}
+              />
+            </Elements>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 const DISPLAY_CURRENCY = import.meta.env.VITE_DISPLAY_CURRENCY || "KWD";
-const PAYMENT_CURRENCY = import.meta.env.VITE_PAYMENT_CURRENCY || "INR";
+const PAYMENT_CURRENCY = import.meta.env.VITE_PAYMENT_CURRENCY || "KWD";
 const DEFAULT_KWD_TO_INR_RATE = Number(import.meta.env.VITE_KWD_TO_INR_RATE || 270);
 
 function normalizeAmount(amount: number | string) {
@@ -35,10 +35,10 @@ export function formatKwd(amount: number | string) {
 }
 
 export function formatInr(amount: number | string) {
-  return new Intl.NumberFormat("en-IN", {
+  return new Intl.NumberFormat("en-KW", {
     style: "currency",
     currency: PAYMENT_CURRENCY,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
   }).format(normalizeAmount(amount));
 }

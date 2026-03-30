@@ -4,19 +4,19 @@ import { verifyAccessToken } from "../middleware/auth.js";
 import Order from "../models/Order.js";
 import Product from "../models/Product.js";
 import User from "../models/User.js";
-import {
-  createRazorpayOrder,
-  fetchRazorpayPayment,
-  getRazorpayPublicConfig,
-  verifyRazorpaySignature,
-} from "../services/paymentService.js";
 import { sendAdminPaymentSuccessEmail, sendOrderEmail } from "../services/mailService.js";
 import {
-  convertKwdToInr,
-  convertKwdToInrPaise,
+  createStripePaymentIntent,
+  fetchStripePaymentIntent,
+  getStripePublicConfig,
+} from "../services/paymentService.js";
+import {
+  convertAmountForRegion,
+  getCurrencyConfig,
   getDisplayCurrency,
-  getKwdToInrRate,
   getPaymentCurrency,
+  inferRegionFromCountry,
+  normalizeRegion,
 } from "../utils/currency.js";
 import { normalizePaymentMethod } from "../utils/paymentMethod.js";
 
@@ -24,16 +24,182 @@ const router = express.Router();
 
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
-const buildReceipt = (userId) => {
-  const userIdShort = String(userId).slice(-6);
-  const timeShort = Date.now().toString().slice(-8);
-  return `rcpt_${userIdShort}_${timeShort}`.slice(0, 40);
+const amountFromMinorUnit = (amountInMinorUnit, currency) => {
+  const upperCurrency = String(currency || "").toUpperCase();
+  const divisor = upperCurrency === "KWD" ? 1000 : 100;
+  const decimalPlaces = upperCurrency === "KWD" ? 3 : 2;
+  return Number(((Number(amountInMinorUnit) || 0) / divisor).toFixed(decimalPlaces));
+};
+
+const isFailedPaymentIntent = (paymentIntent) =>
+  paymentIntent?.status === "canceled" ||
+  paymentIntent?.status === "requires_payment_method" ||
+  Boolean(paymentIntent?.last_payment_error);
+
+const findOrderByPaymentIntentForUser = async (paymentIntentId, userId) => {
+  const order = await Order.findOne({
+    stripePaymentIntentId: paymentIntentId,
+    userId,
+  });
+
+  if (order) {
+    return order;
+  }
+
+  const paymentIntent = await fetchStripePaymentIntent(paymentIntentId);
+  const metadataOrderId = paymentIntent?.metadata?.orderId;
+
+  if (!metadataOrderId) {
+    return null;
+  }
+
+  return Order.findOne({
+    _id: metadataOrderId,
+    userId,
+  });
+};
+
+const finalizeSuccessfulStripePayment = async (order, paymentIntent, userEmail) => {
+  const displayCurrency = String(
+    paymentIntent?.metadata?.display_currency || order.displayCurrency || getDisplayCurrency(order.region)
+  ).toUpperCase();
+  const paymentCurrency = String(
+    paymentIntent?.currency || paymentIntent?.metadata?.payment_currency || order.paymentCurrency || getPaymentCurrency(order.region)
+  ).toUpperCase();
+  const displayAmount =
+    paymentIntent?.metadata?.display_amount !== undefined
+      ? Number(paymentIntent.metadata.display_amount)
+      : Number(order.totalPrice || order.amount || 0);
+  const paymentAmount =
+    paymentIntent?.metadata?.payment_amount
+      ? Number(paymentIntent.metadata.payment_amount)
+      : amountFromMinorUnit(paymentIntent?.amount_received || paymentIntent?.amount, paymentCurrency);
+
+  order.region = normalizeRegion(paymentIntent?.metadata?.region || order.region);
+  order.currency = displayCurrency;
+  order.displayCurrency = displayCurrency;
+  order.paymentCurrency = paymentCurrency;
+  order.paymentAmount = paymentAmount;
+  order.amount = displayAmount;
+  order.original_amount_kwd =
+    paymentIntent?.metadata?.original_amount_kwd !== undefined &&
+    paymentIntent?.metadata?.original_amount_kwd !== ""
+      ? Number(paymentIntent.metadata.original_amount_kwd)
+      : order.original_amount_kwd;
+  order.converted_amount_usd =
+    paymentIntent?.metadata?.converted_amount_usd !== undefined &&
+    paymentIntent?.metadata?.converted_amount_usd !== ""
+      ? Number(paymentIntent.metadata.converted_amount_usd)
+      : order.converted_amount_usd;
+  order.exchange_rate_used =
+    paymentIntent?.metadata?.exchange_rate_used !== undefined &&
+    paymentIntent?.metadata?.exchange_rate_used !== ""
+      ? Number(paymentIntent.metadata.exchange_rate_used)
+      : order.exchange_rate_used;
+  order.exchange_buffer_percent =
+    paymentIntent?.metadata?.exchange_buffer_percent !== undefined &&
+    paymentIntent?.metadata?.exchange_buffer_percent !== ""
+      ? Number(paymentIntent.metadata.exchange_buffer_percent)
+      : order.exchange_buffer_percent;
+  order.exchangeRate = order.exchange_rate_used;
+  order.paymentStatus = "paid";
+  order.paymentMethod = "online";
+  order.paymentProviderMethod =
+    paymentIntent?.payment_method_types?.join(", ") || order.paymentProviderMethod || "stripe";
+  order.paymentProviderStatus = paymentIntent?.status || order.paymentProviderStatus;
+  order.stripePaymentIntentId = paymentIntent?.id || order.stripePaymentIntentId;
+  order.paymentFailureReason = "";
+  order.paidAt = order.paidAt || new Date();
+
+  if (!order.stockDeductedAt) {
+    for (const item of order.products) {
+      await Product.decrementStock(item.productId, item.quantity);
+    }
+
+    order.stockDeductedAt = new Date();
+  }
+
+  if (!order.adminPaymentSuccessEmailSentAt) {
+    const emailSent = await sendAdminPaymentSuccessEmail({
+      ...order.toObject(),
+      userEmail,
+    });
+
+    if (emailSent) {
+      order.adminPaymentSuccessEmailSentAt = new Date();
+    }
+  }
+
+  await order.save();
+  return order;
+};
+
+const recordFailedStripePayment = async (order, paymentIntent, fallbackReason) => {
+  if (order.paymentStatus === "paid") {
+    return order;
+  }
+
+  const displayCurrency = String(
+    paymentIntent?.metadata?.display_currency || order.displayCurrency || getDisplayCurrency(order.region)
+  ).toUpperCase();
+  const paymentCurrency = String(
+    paymentIntent?.currency || paymentIntent?.metadata?.payment_currency || order.paymentCurrency || getPaymentCurrency(order.region)
+  ).toUpperCase();
+  const displayAmount =
+    paymentIntent?.metadata?.display_amount !== undefined
+      ? Number(paymentIntent.metadata.display_amount)
+      : Number(order.totalPrice || order.amount || 0);
+  const paymentAmount =
+    paymentIntent?.metadata?.payment_amount
+      ? Number(paymentIntent.metadata.payment_amount)
+      : amountFromMinorUnit(paymentIntent?.amount, paymentCurrency);
+
+  order.region = normalizeRegion(paymentIntent?.metadata?.region || order.region);
+  order.currency = displayCurrency;
+  order.displayCurrency = displayCurrency;
+  order.paymentCurrency = paymentCurrency;
+  order.paymentAmount = paymentAmount;
+  order.amount = displayAmount;
+  order.original_amount_kwd =
+    paymentIntent?.metadata?.original_amount_kwd !== undefined &&
+    paymentIntent?.metadata?.original_amount_kwd !== ""
+      ? Number(paymentIntent.metadata.original_amount_kwd)
+      : order.original_amount_kwd;
+  order.converted_amount_usd =
+    paymentIntent?.metadata?.converted_amount_usd !== undefined &&
+    paymentIntent?.metadata?.converted_amount_usd !== ""
+      ? Number(paymentIntent.metadata.converted_amount_usd)
+      : order.converted_amount_usd;
+  order.exchange_rate_used =
+    paymentIntent?.metadata?.exchange_rate_used !== undefined &&
+    paymentIntent?.metadata?.exchange_rate_used !== ""
+      ? Number(paymentIntent.metadata.exchange_rate_used)
+      : order.exchange_rate_used;
+  order.exchange_buffer_percent =
+    paymentIntent?.metadata?.exchange_buffer_percent !== undefined &&
+    paymentIntent?.metadata?.exchange_buffer_percent !== ""
+      ? Number(paymentIntent.metadata.exchange_buffer_percent)
+      : order.exchange_buffer_percent;
+  order.exchangeRate = order.exchange_rate_used;
+  order.paymentStatus = paymentIntent?.status === "canceled" ? "cancelled" : "failed";
+  order.paymentMethod = "online";
+  order.paymentProviderMethod =
+    paymentIntent?.payment_method_types?.join(", ") || order.paymentProviderMethod || "stripe";
+  order.paymentProviderStatus = paymentIntent?.status || order.paymentProviderStatus;
+  order.stripePaymentIntentId = paymentIntent?.id || order.stripePaymentIntentId;
+  order.paymentFailureReason =
+    paymentIntent?.last_payment_error?.message || fallbackReason || order.paymentFailureReason || "Payment failed";
+
+  await order.save();
+  return order;
 };
 
 router.post("/create", verifyAccessToken, async (req, res, next) => {
   try {
-    const { products, shippingAddress, notes, paymentMethod = "cod" } = req.body;
+    const { products, shippingAddress, notes, paymentMethod = "cod", region } = req.body;
     const userId = req.user.id;
+    const resolvedRegion = normalizeRegion(region || inferRegionFromCountry(shippingAddress?.country));
+    const currencyConfig = getCurrencyConfig(resolvedRegion);
 
     if (!Array.isArray(products) || products.length === 0) {
       const error = new Error("Products array is required and cannot be empty");
@@ -56,6 +222,7 @@ router.post("/create", verifyAccessToken, async (req, res, next) => {
       userId,
       itemCount: products.length,
       paymentMethod,
+      region: resolvedRegion,
     });
 
     let totalPrice = 0;
@@ -88,18 +255,19 @@ router.post("/create", verifyAccessToken, async (req, res, next) => {
         throw error;
       }
 
-      totalPrice += product.price * item.quantity;
+      const localizedPrice = convertAmountForRegion(product.price, resolvedRegion);
+      totalPrice += localizedPrice * item.quantity;
 
       orderProducts.push({
         productId: product._id,
         title: product.title,
-        price: product.price,
+        price: localizedPrice,
         quantity: item.quantity,
         image: product.images?.[0] || "",
       });
     }
 
-    const roundedTotalPrice = Number(totalPrice.toFixed(3));
+    const roundedTotalPrice = Number(totalPrice.toFixed(currencyConfig.displayDecimalPlaces));
 
     if (roundedTotalPrice <= 0) {
       const error = new Error("Order amount must be greater than 0");
@@ -109,61 +277,58 @@ router.post("/create", verifyAccessToken, async (req, res, next) => {
 
     const normalizedMethod = normalizePaymentMethod(paymentMethod);
 
-    // Persist the customer's latest contact and address details on the user document.
     await User.findByIdAndUpdate(userId, {
       name: shippingAddress.name,
       phone: shippingAddress.phone,
       address: shippingAddress.address,
       city: shippingAddress.city,
-      country: shippingAddress.country || "India",
+      country: shippingAddress.country || currencyConfig.country,
       postalCode: shippingAddress.pincode || "",
     });
-
-    let razorpayOrder = null;
-    if (normalizedMethod === "razorpay") {
-      const { key, configured } = getRazorpayPublicConfig();
-
-      if (!configured || !key) {
-        const error = new Error("Online payment is not configured");
-        error.statusCode = 500;
-        throw error;
-      }
-
-      const amountInPaise = convertKwdToInrPaise(roundedTotalPrice);
-      const receipt = buildReceipt(userId);
-
-      razorpayOrder = await createRazorpayOrder(amountInPaise, receipt, {
-        userId,
-        userEmail: req.user.email,
-        items: String(orderProducts.length),
-        displayCurrency: getDisplayCurrency(),
-        paymentCurrency: getPaymentCurrency(),
-      });
-    }
-
-    const paymentAmount = normalizedMethod === "razorpay"
-      ? convertKwdToInr(roundedTotalPrice)
-      : roundedTotalPrice;
 
     const order = await Order.create({
       userId,
       products: orderProducts,
       totalPrice: roundedTotalPrice,
-      currency: getDisplayCurrency(),
-      displayCurrency: getDisplayCurrency(),
-      paymentCurrency: normalizedMethod === "razorpay" ? getPaymentCurrency() : getDisplayCurrency(),
-      paymentAmount,
-      exchangeRate: getKwdToInrRate(),
+      amount: roundedTotalPrice,
+      region: resolvedRegion,
+      currency: getDisplayCurrency(resolvedRegion),
+      displayCurrency: getDisplayCurrency(resolvedRegion),
+      paymentCurrency: getPaymentCurrency(resolvedRegion),
+      paymentAmount: null,
+      original_amount_kwd: getDisplayCurrency(resolvedRegion) === "KWD" ? roundedTotalPrice : null,
+      converted_amount_usd: null,
+      exchange_rate_used: null,
+      exchange_buffer_percent: null,
+      exchangeRate: resolvedRegion === "india" ? Number(process.env.KWD_TO_INR_RATE || 270) : null,
       paymentMethod: normalizedMethod,
       paymentStatus: "pending",
       orderStatus: "processing",
-      razorpayOrderId: razorpayOrder?.id || undefined,
       shippingAddress: {
         ...shippingAddress,
-        country: shippingAddress.country || "India",
+        country: shippingAddress.country || currencyConfig.country,
       },
       notes: notes || "",
     });
+
+    let payment = null;
+
+    if (normalizedMethod === "online") {
+      payment = await createStripePaymentIntent({
+        amount: roundedTotalPrice,
+        region: resolvedRegion,
+        customerEmail: req.user.email,
+        metadata: {
+          orderId: order._id.toString(),
+          userId,
+        },
+        idempotencyKey: `order_${order._id.toString()}_payment_create`,
+      });
+
+      order.stripePaymentIntentId = payment.paymentIntent.id;
+      order.paymentProviderStatus = payment.paymentIntent.status;
+      await order.save();
+    }
 
     order.userEmail = req.user.email;
 
@@ -172,14 +337,9 @@ router.post("/create", verifyAccessToken, async (req, res, next) => {
         await Product.decrementStock(item.productId, item.quantity);
       }
 
-      order.paymentStatus = "pending";
+      order.stockDeductedAt = new Date();
+      await order.save();
     }
-
-    console.log("[ORDER] Order saved in database", {
-      orderId: order._id.toString(),
-      razorpayOrderId: order.razorpayOrderId || null,
-      paymentStatus: order.paymentStatus,
-    });
 
     Promise.resolve(sendOrderEmail(order)).catch((mailError) => {
       console.error("[MAIL] Email send failed", mailError.message);
@@ -188,26 +348,35 @@ router.post("/create", verifyAccessToken, async (req, res, next) => {
     const responsePayload = {
       success: true,
       order,
-      paymentRequired: normalizedMethod === "razorpay",
+      paymentRequired: normalizedMethod === "online",
     };
 
-    if (razorpayOrder) {
+    if (payment) {
+      order.paymentCurrency = payment.paymentCurrency;
+      order.paymentAmount = payment.paymentAmount;
+      order.original_amount_kwd = payment.original_amount_kwd;
+      order.converted_amount_usd = payment.converted_amount_usd;
+      order.exchange_rate_used = payment.exchange_rate_used;
+      order.exchange_buffer_percent = payment.exchange_buffer_percent;
+      order.exchangeRate = payment.exchange_rate_used;
       responsePayload.payment = {
-        key: getRazorpayPublicConfig().key,
-        amount: razorpayOrder.amount,
-        currency: razorpayOrder.currency,
-        orderId: razorpayOrder.id,
-        receipt: razorpayOrder.receipt,
-        displayCurrency: getDisplayCurrency(),
-        displayAmount: roundedTotalPrice,
-        paymentCurrency: getPaymentCurrency(),
-        paymentAmount,
+        provider: "stripe",
+        clientSecret: payment.clientSecret,
+        paymentIntentId: payment.paymentIntent.id,
+        amount: payment.displayAmount,
+        currency: payment.displayCurrency,
+        displayCurrency: payment.displayCurrency,
+        displayAmount: payment.displayAmount,
+        paymentCurrency: payment.paymentCurrency,
+        paymentAmount: payment.paymentAmount,
+        original_amount_kwd: payment.original_amount_kwd,
+        converted_amount_usd: payment.converted_amount_usd,
+        exchange_rate_used: payment.exchange_rate_used,
+        exchange_buffer_percent: payment.exchange_buffer_percent,
+        publishableKey: getStripePublicConfig().publishableKey,
       };
 
-      console.log("[PAYMENT] Returning Razorpay order to frontend", {
-        orderId: order._id.toString(),
-        razorpayOrderId: razorpayOrder.id,
-      });
+      await order.save();
     }
 
     res.status(201).json(responsePayload);
@@ -218,28 +387,33 @@ router.post("/create", verifyAccessToken, async (req, res, next) => {
 
 router.post("/verify", verifyAccessToken, async (req, res, next) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    const paymentIntentId =
+      req.body.payment_intent_id ||
+      req.body.stripe_payment_intent_id ||
+      req.body.paymentIntentId;
 
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      const error = new Error("Payment verification fields are required");
+    if (!paymentIntentId) {
+      const error = new Error("Stripe PaymentIntent ID is required");
       error.statusCode = 400;
+      error.code = "STRIPE_PAYMENT_INTENT_ID_REQUIRED";
       throw error;
     }
 
-    console.log("[PAYMENT] Payment success response received", {
-      razorpayOrderId: razorpay_order_id,
-      razorpayPaymentId: razorpay_payment_id,
-    });
-
-    const order = await Order.findOne({
-      razorpayOrderId: razorpay_order_id,
-      userId: req.user.id,
-    });
+    const paymentIntent = await fetchStripePaymentIntent(paymentIntentId);
+    const order = await findOrderByPaymentIntentForUser(paymentIntentId, req.user.id);
 
     if (!order) {
       const error = new Error("Order not found");
       error.statusCode = 404;
       throw error;
+    }
+
+    if (isFailedPaymentIntent(paymentIntent)) {
+      await recordFailedStripePayment(order, paymentIntent);
+    }
+
+    if (paymentIntent.status === "succeeded" && order.paymentStatus !== "paid") {
+      await finalizeSuccessfulStripePayment(order, paymentIntent, req.user.email);
     }
 
     if (order.paymentStatus === "paid") {
@@ -249,68 +423,23 @@ router.post("/verify", verifyAccessToken, async (req, res, next) => {
         data: {
           orderId: order._id,
           paymentStatus: order.paymentStatus,
+          paidAt: order.paidAt,
+          paymentProviderStatus: order.paymentProviderStatus,
         },
       });
     }
 
-    const isValid = verifyRazorpaySignature(
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature
-    );
-
-    if (!isValid) {
-      const error = new Error("Invalid payment signature");
-      error.statusCode = 400;
-      throw error;
-    }
-
-    order.paymentStatus = "paid";
-    order.paymentMethod = "razorpay";
-    order.paymentCurrency = getPaymentCurrency();
-    order.paymentAmount = convertKwdToInr(order.totalPrice);
-    order.razorpayPaymentId = razorpay_payment_id;
-    order.razorpaySignature = razorpay_signature;
-    order.paidAt = new Date();
-
-    try {
-      const paymentDetails = await fetchRazorpayPayment(razorpay_payment_id);
-      order.paymentProviderMethod = paymentDetails?.method || order.paymentProviderMethod;
-    } catch (paymentFetchError) {
-      console.error("[PAYMENT] Unable to fetch payment method details", paymentFetchError.message);
-    }
-
-    await order.save();
-
-    console.log("[PAYMENT] Database updated", {
-      orderId: order._id.toString(),
-      paymentStatus: order.paymentStatus,
-      paidAt: order.paidAt,
-    });
-
-    for (const item of order.products) {
-      await Product.decrementStock(item.productId, item.quantity);
-    }
-
-    if (!order.adminPaymentSuccessEmailSentAt) {
-      const emailSent = await sendAdminPaymentSuccessEmail({
-        ...order.toObject(),
-        userEmail: req.user.email,
-      });
-
-      if (emailSent) {
-        order.adminPaymentSuccessEmailSentAt = new Date();
-        await order.save();
-      }
-    }
-
     res.status(200).json({
       success: true,
-      message: "Payment verified successfully",
+      message:
+        paymentIntent.status === "succeeded"
+          ? "Payment is successful on Stripe and awaiting webhook confirmation"
+          : "Payment status fetched successfully",
       data: {
         orderId: order._id,
         paymentStatus: order.paymentStatus,
         paidAt: order.paidAt,
+        paymentProviderStatus: paymentIntent.status,
       },
     });
   } catch (error) {
@@ -320,12 +449,22 @@ router.post("/verify", verifyAccessToken, async (req, res, next) => {
 
 router.post("/payment-failure", verifyAccessToken, async (req, res, next) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, error_description, error_reason } = req.body;
+    const paymentIntentId =
+      req.body.payment_intent_id ||
+      req.body.stripe_payment_intent_id ||
+      req.body.paymentIntentId;
+    const fallbackReason = [req.body.error_description, req.body.error_reason]
+      .filter(Boolean)
+      .join(" | ");
 
-    const order = await Order.findOne({
-      razorpayOrderId: razorpay_order_id,
-      userId: req.user.id,
-    });
+    if (!paymentIntentId) {
+      return res.status(200).json({
+        success: true,
+        message: "Payment failure callback acknowledged",
+      });
+    }
+
+    const order = await findOrderByPaymentIntentForUser(paymentIntentId, req.user.id);
 
     if (!order) {
       const error = new Error("Order not found");
@@ -333,18 +472,11 @@ router.post("/payment-failure", verifyAccessToken, async (req, res, next) => {
       throw error;
     }
 
-    order.paymentStatus = "failed";
-    order.paymentFailureReason = [error_description, error_reason].filter(Boolean).join(" | ");
-    if (razorpay_payment_id) {
-      order.razorpayPaymentId = razorpay_payment_id;
-    }
-    await order.save();
+    const paymentIntent = await fetchStripePaymentIntent(paymentIntentId);
 
-    console.error("[PAYMENT] Payment failed", {
-      orderId: order._id.toString(),
-      razorpayOrderId: razorpay_order_id,
-      error: order.paymentFailureReason || "Unknown payment failure",
-    });
+    if (isFailedPaymentIntent(paymentIntent)) {
+      await recordFailedStripePayment(order, paymentIntent, fallbackReason);
+    }
 
     res.status(200).json({
       success: true,

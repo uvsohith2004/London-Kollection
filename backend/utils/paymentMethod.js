@@ -1,8 +1,8 @@
 export function normalizePaymentMethod(paymentMethod) {
   const normalizedMethod = String(paymentMethod || "cod").toLowerCase();
 
-  if (normalizedMethod === "online") {
-    return "razorpay";
+  if (normalizedMethod === "online" || normalizedMethod === "razorpay" || normalizedMethod === "stripe") {
+    return "online";
   }
 
   return normalizedMethod;
@@ -11,7 +11,7 @@ export function normalizePaymentMethod(paymentMethod) {
 export function getPaymentMethodLabel(paymentMethod) {
   const normalizedMethod = normalizePaymentMethod(paymentMethod);
 
-  if (normalizedMethod === "razorpay") {
+  if (normalizedMethod === "online") {
     return "Online Payment";
   }
 
