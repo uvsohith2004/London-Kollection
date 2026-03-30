@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "cd backend && npm start",
+    "postinstall": "cd backend && npm install",
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
