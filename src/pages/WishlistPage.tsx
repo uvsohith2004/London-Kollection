@@ -1,4 +1,4 @@
-import { useWishlistStore } from "@/store/wishliststore";
+import { useWishlistStore } from "@/store/wishlistStore";
 import { useProductStore } from "@/store/productStore";
 import ProductCard from "@/components/ProductCard";
 import { Heart } from "lucide-react";
