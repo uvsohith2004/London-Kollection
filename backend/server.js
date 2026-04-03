@@ -39,6 +39,7 @@ const devAllowedOrigins = new Set(
     "http://127.0.0.1:8080",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://london-kollection.vercel.app",
     ...configuredFrontendOrigins,
   ].map((origin) => normalizeOrigin(origin))
 );
@@ -84,7 +85,12 @@ app.use(
       const normalizedOrigin = normalizeOrigin(origin);
 
       if (isProduction) {
-        if (configuredFrontendOrigins.includes(normalizedOrigin)) {
+        const allowedProductionOrigins = new Set([
+          ...configuredFrontendOrigins,
+          "https://london-kollection.vercel.app",
+        ].map((o) => normalizeOrigin(o)).filter(Boolean));
+
+        if (allowedProductionOrigins.has(normalizedOrigin)) {
           return callback(null, true);
         }
 
