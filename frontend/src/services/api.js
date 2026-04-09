@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || "https://london-kollection.onrender.com/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "https://london-kollection.onrender.com";
 
 class ApiService {
   constructor() {
@@ -54,7 +54,7 @@ class ApiService {
   }
 
   async register(userData) {
-    const data = await this.request("/auth/register", {
+    const data = await this.request("/api/auth/register", {
       method: "POST",
       includeAuth: false,
       body: JSON.stringify(userData),
@@ -68,7 +68,7 @@ class ApiService {
   }
 
   async login(credentials) {
-    const data = await this.request("/auth/login", {
+    const data = await this.request("/api/auth/login", {
       method: "POST",
       includeAuth: false,
       body: JSON.stringify(credentials),
@@ -82,7 +82,7 @@ class ApiService {
   }
 
   async refreshToken(refreshToken) {
-    const data = await this.request("/auth/refresh", {
+    const data = await this.request("/api/auth/refresh", {
       method: "POST",
       includeAuth: false,
       body: JSON.stringify(refreshToken ? { refreshToken } : {}),
@@ -97,7 +97,7 @@ class ApiService {
 
   async logout() {
     try {
-      await this.request("/auth/logout", {
+      await this.request("/api/auth/logout", {
         method: "POST",
       });
     } finally {
@@ -106,7 +106,7 @@ class ApiService {
   }
 
   async forgotPassword(email) {
-    return this.request("/auth/forgot-password", {
+    return this.request("/api/auth/forgot-password", {
       method: "POST",
       includeAuth: false,
       body: JSON.stringify({ email }),
@@ -114,7 +114,7 @@ class ApiService {
   }
 
   async verifyResetOtp(payload) {
-    return this.request("/auth/verify-reset-otp", {
+    return this.request("/api/auth/verify-reset-otp", {
       method: "POST",
       includeAuth: false,
       body: JSON.stringify(payload),
@@ -122,7 +122,7 @@ class ApiService {
   }
 
   async resetPassword(payload) {
-    return this.request("/auth/reset-password", {
+    return this.request("/api/auth/reset-password", {
       method: "POST",
       includeAuth: false,
       body: JSON.stringify(payload),
@@ -130,13 +130,13 @@ class ApiService {
   }
 
   async getProfile() {
-    return this.request("/users/profile", {
+    return this.request("/api/users/profile", {
       method: "GET",
     });
   }
 
   async updateProfile(profileData) {
-    return this.request("/users/profile", {
+    return this.request("/api/users/profile", {
       method: "PUT",
       body: JSON.stringify(profileData),
     });
@@ -150,7 +150,7 @@ class ApiService {
     if (filters.limit) params.append("limit", String(filters.limit));
 
     const queryString = params.toString();
-    const data = await this.request(`/products${queryString ? `?${queryString}` : ""}`, {
+    const data = await this.request(`/api/products${queryString ? `?${queryString}` : ""}`, {
       method: "GET",
       includeAuth: false,
     });
@@ -162,7 +162,7 @@ class ApiService {
   }
 
   async getFeaturedProducts(limit = 5) {
-    const data = await this.request(`/products/featured?limit=${limit}`, {
+    const data = await this.request(`/api/products/featured?limit=${limit}`, {
       method: "GET",
       includeAuth: false,
     });
@@ -174,74 +174,74 @@ class ApiService {
   }
 
   async getProductDetail(idOrSlug) {
-    return this.request(`/products/${idOrSlug}`, {
+    return this.request(`/api/products/${idOrSlug}`, {
       method: "GET",
       includeAuth: false,
     });
   }
 
   async getCategories() {
-    return this.request("/products/categories", {
+    return this.request("/api/products/categories", {
       method: "GET",
       includeAuth: false,
     });
   }
 
   async createProduct(productData) {
-    return this.request("/products", {
+    return this.request("/api/products", {
       method: "POST",
       body: JSON.stringify(productData),
     });
   }
 
   async updateProduct(productId, productData) {
-    return this.request(`/products/${productId}`, {
+    return this.request(`/api/products/${productId}`, {
       method: "PUT",
       body: JSON.stringify(productData),
     });
   }
 
   async deleteProduct(productId) {
-    return this.request(`/products/${productId}`, {
+    return this.request(`/api/products/${productId}`, {
       method: "DELETE",
     });
   }
 
   async createOrder(orderData) {
-    return this.request("/orders/create", {
+    return this.request("/api/orders/create", {
       method: "POST",
       body: JSON.stringify(orderData),
     });
   }
 
   async verifyPayment(paymentData) {
-    return this.request("/orders/verify", {
+    return this.request("/api/orders/verify", {
       method: "POST",
       body: JSON.stringify(paymentData),
     });
   }
 
   async reportPaymentFailure(paymentData) {
-    return this.request("/orders/payment-failure", {
+    return this.request("/api/orders/payment-failure", {
       method: "POST",
       body: JSON.stringify(paymentData),
     });
   }
 
   async getOrder(orderId) {
-    return this.request(`/orders/${orderId}`, {
+    return this.request(`/api/orders/${orderId}`, {
       method: "GET",
     });
   }
 
   async getMyOrders() {
-    return this.request("/orders/my-orders", {
+    return this.request("/api/orders/my-orders", {
       method: "GET",
     });
   }
 
   async getUserOrders() {
-    return this.request("/orders", {
+    return this.request("/api/orders", {
       method: "GET",
     });
   }
