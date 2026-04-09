@@ -75,51 +75,12 @@ app.use(
   })
 );
 
-app.options("*", cors());
-
-app.use(
-  cors({
-    origin(origin, callback) {
-      if (!origin) {
-        return callback(null, true);
-      }
-
-      const normalizedOrigin = normalizeOrigin(origin);
-
-      if (isProduction) {
-        const allowedProductionOrigins = new Set([
-          ...configuredFrontendOrigins,
-          "https://london-kollection.vercel.app",
-        ].map((o) => normalizeOrigin(o)).filter(Boolean));
-
-        if (allowedProductionOrigins.has(normalizedOrigin)) {
-          return callback(null, true);
-        }
-
-        const corsError = new Error(`CORS blocked for origin: ${origin}`);
-        corsError.statusCode = 403;
-        corsError.code = "CORS_BLOCKED";
-        return callback(corsError, false);
-      }
-
-      const isLocalhost =
-        /^http:\/\/localhost:\d+$/i.test(normalizedOrigin) ||
-        /^http:\/\/127\.0\.0\.1:\d+$/i.test(normalizedOrigin);
-
-      if (devAllowedOrigins.has(normalizedOrigin) || isLocalhost) {
-        return callback(null, true);
-      }
-
-      const corsError = new Error(`CORS blocked for origin: ${origin}`);
-      corsError.statusCode = 403;
-      corsError.code = "CORS_BLOCKED";
-      return callback(corsError, false);
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+app.use(cors({
+  origin: [
+    "https://london-kollection.vercel.app"
+  ],
+  credentials: true
+}));
 
 app.use(cookieParser());
 app.post("/api/payments/webhook", express.raw({ type: "application/json" }), stripeWebhookHandler);
