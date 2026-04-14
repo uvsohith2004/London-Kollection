@@ -104,13 +104,13 @@ export default function ProductCard({ product }: { product: any }) {
             <div className="grid grid-cols-2 gap-3 pt-2">
               <button
                 onClick={handleAddToCart}
-                className="rounded-full border-2 border-black px-5 py-3 text-xs font-semibold uppercase tracking-widest text-black transition-all duration-300 hover:bg-black hover:text-white hover:shadow-lg active:scale-95"
+                className="rounded-lg border-2 border-black px-5 py-3 text-xs font-semibold uppercase tracking-widest text-black transition-all duration-300 hover:bg-black hover:text-white hover:shadow-lg active:scale-95"
               >
                 Add to Cart
               </button>
               <button
                 onClick={handleBuyNow}
-                className="rounded-full bg-black px-5 py-3 text-xs font-semibold uppercase tracking-widest text-white transition-all duration-300 hover:bg-stone-900 hover:shadow-lg active:scale-95"
+                className="rounded-lg bg-black px-5 py-3 text-xs font-semibold uppercase tracking-widest text-white transition-all duration-300 hover:bg-stone-900 hover:shadow-lg active:scale-95"
               >
                 Buy Now
               </button>
