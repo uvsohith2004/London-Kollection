@@ -6,7 +6,7 @@ import ProductCard from "@/components/ProductCard";
 import { useProductStore } from "@/store/productStore";
 import { useEffect, useRef } from "react";
 
-const WHATSAPP_NUMBER = "919985542871";
+const WHATSAPP_NUMBER = "919885058098";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 40 },
@@ -30,14 +30,16 @@ export default function HomePage() {
     const video = videoRef.current;
     if (!video) return;
 
-    const loopDuration = 8;
+    
+    const loopDuration = 8;    
+    const startTime = 6;        
 
-    const handleTimeUpdate = () => {
-      if (video.currentTime >= loopDuration) {
-        video.currentTime = 5;
-        video.play();
-      }
-    };
+const handleTimeUpdate = () => {
+  if (video.currentTime >= loopDuration) {
+    video.currentTime = startTime;  
+    video.play();
+  }
+};
 
     video.addEventListener("timeupdate", handleTimeUpdate);
 
@@ -47,7 +49,7 @@ export default function HomePage() {
   }, []);
 
   const displayProducts = Array.isArray(featuredProducts)
-    ? featuredProducts.slice(0, 4)
+    ? featuredProducts.slice(0, 5)
     : [];
 
   return (
