@@ -34,7 +34,7 @@ export default function HomePage() {
 
     const handleTimeUpdate = () => {
       if (video.currentTime >= loopDuration) {
-        video.currentTime = 0;
+        video.currentTime = 5;
         video.play();
       }
     };
@@ -47,7 +47,7 @@ export default function HomePage() {
   }, []);
 
   const displayProducts = Array.isArray(featuredProducts)
-    ? featuredProducts.slice(0, 5)
+    ? featuredProducts.slice(0, 4)
     : [];
 
   return (
