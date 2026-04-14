@@ -31,8 +31,8 @@ export default function HomePage() {
     if (!video) return;
 
     
-    const loopDuration = 8;    
-    const startTime = 6;        
+    const loopDuration = 28;    
+    const startTime = 7;        
 
 const handleTimeUpdate = () => {
   if (video.currentTime >= loopDuration) {
