@@ -47,7 +47,7 @@ function ThemeHotkey() {
         return
       }
 
-      if (event.key.toLowerCase() !== "d") {
+      if (event.key?.toLowerCase() !== "d") {
         return
       }
 
@@ -66,6 +66,17 @@ function ThemeHotkey() {
   }, [resolvedTheme, setTheme])
 
   return null
+}
+
+// Suppress React 19 warning about script tags inside components from next-themes
+if (typeof window !== "undefined") {
+  const originalError = console.error
+  console.error = (...args) => {
+    if (args[0] && typeof args[0] === "string" && args[0].includes("Encountered a script tag while rendering React component")) {
+      return
+    }
+    originalError.call(console, ...args)
+  }
 }
 
 export { ThemeProvider }

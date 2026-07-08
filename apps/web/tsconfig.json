@@ -9,7 +9,9 @@
       {
         "name": "next"
       }
-    ]
+    ],
+    "declaration": false,
+    "declarationMap": false
   },
   "include": [
     "next-env.d.ts",
@@ -19,6 +21,6 @@
     "**/*.mts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
-  ],
+, "../../packages/ui/src/components/multi-select.tsx"  ],
   "exclude": ["node_modules"]
 }
