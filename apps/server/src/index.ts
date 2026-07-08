@@ -1,5 +1,5 @@
 import { Hono } from "hono"
-import { auth } from "@/config/auth"
+import { auth } from "./config/auth"
 import { cors } from "hono/cors"
 import { env } from "hono/adapter"
 import { loadConfig } from "./config"
