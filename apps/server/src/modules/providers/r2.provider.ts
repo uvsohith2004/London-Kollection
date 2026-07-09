@@ -42,6 +42,7 @@ export class CloudflareR2Provider implements MediaProvider {
         accessKeyId: accessKeyId || "",
         secretAccessKey: secretAccessKey || "",
       },
+      forcePathStyle: true,
     })
     
     return this._client
