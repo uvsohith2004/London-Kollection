@@ -1,5 +1,5 @@
 import { Hono } from "hono"
-import { auth } from "./config/auth"
+import { auth } from "@/config/auth"
 import { cors } from "hono/cors"
 import { env } from "hono/adapter"
 import { loadConfig } from "./config"
@@ -10,8 +10,10 @@ import { notFoundHandler } from "@/core/middleware/not-found.middleware"
 import { rateLimiter } from "@/core/middleware"
 import { requestIdMiddleware } from "@/core/middleware"
 import { requestLoggerMiddleware } from "@/core/middleware"
-import { sessionMiddleware, requireRole } from "@/core/middleware/auth.middleware"
-
+import {
+  sessionMiddleware,
+  requireRole,
+} from "@/core/middleware/auth.middleware"
 
 import {
   productsRouter,
@@ -30,7 +32,7 @@ import {
 import { adminBrandsRouter } from "@/modules/catalog/brands/brands.routes"
 
 import { usersRouter, adminUsersRouter } from "@/modules/identity"
-import { addressesRouter } from "@/modules/fulfillment"
+
 import { checkoutRouter } from "@/modules/checkout"
 
 import {
@@ -56,7 +58,11 @@ import {
 } from "@/modules/engagement"
 
 import { mediaRouter } from "@/modules/media"
-import { settingsRouter, adminDashboardRouter, emailAdminRouter } from "@/modules/administration"
+import {
+  settingsRouter,
+  adminDashboardRouter,
+  emailAdminRouter,
+} from "@/modules/administration"
 import { helpCenterRouter } from "@/modules/support"
 import { chatRouter } from "@/modules/support-bot"
 import { historyRouter } from "@/modules/history"
@@ -74,11 +80,12 @@ app.use(
   "*",
   cors({
     origin: (origin, c) => {
-  
       const envVars = env<{ WEB_URL: string; NODE_ENV: string }>(c)
-      const isDev = envVars.NODE_ENV === "development" || process.env.NODE_ENV === "development"
+      const isDev =
+        envVars.NODE_ENV === "development" ||
+        process.env.NODE_ENV === "development"
       const webUrl = envVars.WEB_URL || process.env.WEB_URL
-      return isDev ? "http://localhost:3000" : (webUrl || "http://localhost:3000")
+      return isDev ? "http://localhost:3000" : webUrl || "http://localhost:3000"
     },
     allowHeaders: ["Content-Type", "Authorization"],
     allowMethods: ["POST", "GET", "OPTIONS", "PUT", "DELETE"],
@@ -99,7 +106,6 @@ app.use("*", async (c, next) => {
   await loadConfig()
   await next()
 })
-
 
 app.on(["POST", "GET"], "/api/auth/*", (c) => {
   return auth.handler(c.req.raw)
@@ -122,31 +128,38 @@ app.route("/api/orders", ordersRouter)
 app.route("/api/coupons", couponsRouter)
 app.route("/api/invoices", invoicesRouter)
 app.route("/api/reviews", reviewsRouter)
-app.get("/api/customer-reviews", (c) => c.json(ok({
-  items: [
-    {
-      id: "1",
-      rating: 5,
-      description: "The quality of the pieces I received exceeded my expectations. Truly premium materials and a perfect fit.",
-      name: "James T.",
-      verifiedPurchase: true
-    },
-    {
-      id: "2",
-      rating: 5,
-      description: "Fast shipping and the packaging was beautiful. The coat I bought feels incredibly luxurious.",
-      name: "Sarah M.",
-      verifiedPurchase: true
-    },
-    {
-      id: "3",
-      rating: 4,
-      description: "Excellent craftsmanship. I get compliments every time I wear my new watch from the London Kollection.",
-      name: "David L.",
-      verifiedPurchase: false
-    }
-  ]
-})))
+app.get("/api/customer-reviews", (c) =>
+  c.json(
+    ok({
+      items: [
+        {
+          id: "1",
+          rating: 5,
+          description:
+            "The quality of the pieces I received exceeded my expectations. Truly premium materials and a perfect fit.",
+          name: "James T.",
+          verifiedPurchase: true,
+        },
+        {
+          id: "2",
+          rating: 5,
+          description:
+            "Fast shipping and the packaging was beautiful. The coat I bought feels incredibly luxurious.",
+          name: "Sarah M.",
+          verifiedPurchase: true,
+        },
+        {
+          id: "3",
+          rating: 4,
+          description:
+            "Excellent craftsmanship. I get compliments every time I wear my new watch from the London Kollection.",
+          name: "David L.",
+          verifiedPurchase: false,
+        },
+      ],
+    })
+  )
+)
 app.route("/api/returns", returnsRouter)
 app.route("/api/wishlist", wishlistRouter)
 app.route("/api/notifications", notificationsRouter)
@@ -192,13 +205,15 @@ app.get("/", (c) => c.text("API is running"))
 
 export default app
 
-if (typeof process !== "undefined" && process.release?.name === "node") {
-  import("@hono/node-server").then(({ serve }) => {
-    const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 4000
-    logger.info(`Hono server running on port ${port}`)
-    serve({
-      fetch: app.fetch,
-      port,
-    })
+if (!process.env.K_SERVICE) {
+  const { serve } = await import("@hono/node-server")
+
+  const port = Number(process.env.PORT ?? 4000)
+
+  logger.info(`🚀 Hono running on port ${port}`)
+
+  serve({
+    fetch: app.fetch,
+    port,
   })
 }
