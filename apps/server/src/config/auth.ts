@@ -25,10 +25,11 @@ export const auth = betterAuth({
     },
   },
   advanced: {
-
-    crossSubDomainCookies: {
-      enabled: true,
-    },
+    defaultCookieAttributes: {
+      domain: process.env.NODE_ENV === "production" ? ".londonkollection.com" : undefined,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax"
+    }
   },
   emailAndPassword: {
     enabled: true,
