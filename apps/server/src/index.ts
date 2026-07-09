@@ -1,7 +1,7 @@
 import { Hono } from "hono"
 import { auth } from "@/config/auth"
 import { cors } from "hono/cors"
-import { env } from "hono/adapter"
+
 import { loadConfig } from "./config"
 import { errorHandler } from "@/core/errors"
 import { ok } from "@/core/response"
@@ -14,7 +14,7 @@ import {
   sessionMiddleware,
   requireRole,
 } from "@/core/middleware/auth.middleware"
-
+import { flashSaleRoutes } from "@/modules/catalog/flash-sale"
 import {
   productsRouter,
   adminProductsRouter,
@@ -68,7 +68,7 @@ import { chatRouter } from "@/modules/support-bot"
 import { historyRouter } from "@/modules/history"
 import { heatmapRouter } from "@/modules/heatmap"
 import { featuredRouter, adminFeaturedRouter } from "@/modules/featured"
-
+import { serve } from "@hono/node-server"
 const app = new Hono<{
   Variables: {
     user: typeof auth.$Infer.Session.user | null
@@ -79,19 +79,36 @@ const app = new Hono<{
 app.use(
   "*",
   cors({
-    origin: (origin, c) => {
-      const envVars = env<{ WEB_URL: string; NODE_ENV: string }>(c)
-      const isDev =
-        envVars.NODE_ENV === "development" ||
-        process.env.NODE_ENV === "development"
-      const webUrl = envVars.WEB_URL || process.env.WEB_URL
-      return isDev ? "http://localhost:3000" : webUrl || "http://localhost:3000"
+    origin: (origin) => {
+      const allowedOrigins = [
+        "http://localhost:3000",
+        process.env.WEB_URL,
+        process.env.ADMIN_URL,
+      ].filter(Boolean) as string[]
+
+      if (!origin) {
+        return allowedOrigins[0] ?? ""
+      }
+
+      return allowedOrigins.includes(origin) ? origin : ""
     },
-    allowHeaders: ["Content-Type", "Authorization"],
-    allowMethods: ["POST", "GET", "OPTIONS", "PUT", "DELETE"],
-    exposeHeaders: ["Content-Length"],
-    maxAge: 600,
+
     credentials: true,
+
+    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+
+    allowHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Accept",
+      "X-Requested-With",
+      "Origin",
+      "Cookie",
+    ],
+
+    exposeHeaders: ["Content-Length", "Content-Type", "Set-Cookie"],
+
+    maxAge: 86400,
   })
 )
 app.onError(errorHandler)
@@ -115,8 +132,6 @@ app.route("/api/products", productsRouter)
 app.route("/api/categories", categoriesRouter)
 app.route("/api/collections", collectionsRouter)
 app.route("/api/users", usersRouter)
-
-import { flashSaleRoutes } from "@/modules/catalog/flash-sale"
 
 app.route("/api/search", searchRouter)
 app.route("/api/hero-carousel", heroRouter)
@@ -204,16 +219,11 @@ app.route("/api/admin", adminRouter)
 app.get("/", (c) => c.text("API is running"))
 
 export default app
+const port = Number(process.env.PORT ?? 8080)
 
-if (!process.env.K_SERVICE) {
-  const { serve } = await import("@hono/node-server")
+logger.info(`🚀 Hono running on port ${port}`)
 
-  const port = Number(process.env.PORT ?? 4000)
-
-  logger.info(`🚀 Hono running on port ${port}`)
-
-  serve({
-    fetch: app.fetch,
-    port,
-  })
-}
+serve({
+  fetch: app.fetch,
+  port,
+})
