@@ -9,6 +9,7 @@ export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: "pg" }),
   secret: process.env.BETTER_AUTH_SECRET!,
   baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+  trustHost: true,
   trustedOrigins: [
     "http://localhost:3000", 
     "http://localhost:4000",
@@ -21,6 +22,15 @@ export const auth = betterAuth({
       enabled: true,
       trustedProviders: ["google"],
       disableImplicitLinking: true,
+    },
+  },
+  advanced: {
+             defaultCookieAttributes: {
+                  sameSite: 'none',
+                  secure: true,
+                },
+    crossSubDomainCookies: {
+      enabled: true,
     },
   },
   emailAndPassword: {
