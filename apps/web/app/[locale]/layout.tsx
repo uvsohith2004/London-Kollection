@@ -7,8 +7,10 @@ import { notFound } from "next/navigation"
 import "@workspace/ui/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { QueryProvider } from "@/components/query-provider"
+import { SettingsProvider } from "@/components/providers/settings-provider"
 import { Navbar } from "@/components/navbar"
 import { cn } from "@workspace/ui/lib/utils";
+import { getStoreSettings } from "@/lib/api"
 
 const loraHeading = Lora({ subsets: ['latin'], variable: '--font-heading' });
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
@@ -28,6 +30,17 @@ export default async function RootLayout({
   // Fetch translation messages
   const messages = await getMessages();
 
+  // Fetch global settings
+  let initialSettings = undefined;
+  try {
+    const settingsRes = await getStoreSettings();
+    if (settingsRes?.data) {
+      initialSettings = settingsRes.data;
+    }
+  } catch (e) {
+    console.error("Failed to fetch store settings", e)
+  }
+
   // Determine direction based on locale
   const dir = locale === 'ar' ? 'rtl' : 'ltr';
 
@@ -43,16 +56,32 @@ export default async function RootLayout({
         locale === 'ar' ? 'font-arabic-sans' : 'font-sans'
       )}
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                var savedColor = localStorage.getItem('theme-color');
+                if (savedColor && savedColor !== 'zinc') {
+                  document.documentElement.setAttribute('data-theme', savedColor);
+                }
+              } catch (e) {}
+            `,
+          }}
+        />
+      </head>
       <body className="min-h-dvh flex flex-col" suppressHydrationWarning>
         <NextIntlClientProvider messages={messages} locale={locale}>
           <DirectionProvider dir={dir}>
             <QueryProvider>
-              <ThemeProvider>
-                <Navbar />
-                <main className="flex-1 md:pb-0 pb-16">
-                  {children}
-                </main>
-              </ThemeProvider>
+              <SettingsProvider initialSettings={initialSettings}>
+                <ThemeProvider>
+                  <Navbar />
+                  <main className="flex-1 md:pb-0 pb-16">
+                    {children}
+                  </main>
+                </ThemeProvider>
+              </SettingsProvider>
             </QueryProvider>
           </DirectionProvider>
         </NextIntlClientProvider>

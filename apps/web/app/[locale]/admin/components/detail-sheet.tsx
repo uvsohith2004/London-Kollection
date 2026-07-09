@@ -3,7 +3,7 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@workspace/ui/components/sheet"
 import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
-import { formatCurrency } from "@/lib/format"
+import { useFormatCurrency } from "@/lib/format"
 import type { DashboardDetailKey, DashboardOverviewResponse } from "@/types/overview-types"
 
 export interface DetailSheetProps {
@@ -32,6 +32,7 @@ const IS_CURRENCY: Record<DashboardDetailKey, boolean> = {
 }
 
 export function DetailSheet({ activeDetail, onOpenChange, data, onExportPdf, isExporting, side = "right", className }: DetailSheetProps) {
+  const formatCurrency = useFormatCurrency()
   const history = activeDetail
     ? activeDetail === "volume"
       ? data.grossVolume.history

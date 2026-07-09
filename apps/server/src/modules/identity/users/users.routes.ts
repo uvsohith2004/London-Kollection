@@ -22,4 +22,5 @@ usersRouter.post("/profile/avatar/process", (c) => controller.processAvatar(c))
 // Admin Routes
 adminUsersRouter.use("*", requireRole("admin"))
 adminUsersRouter.get("/", (c) => controller.listAdmin(c)) // was /admin
+adminUsersRouter.get("/search", (c) => controller.searchAdmin(c))
 adminUsersRouter.patch("/:id/role", zValidator("json", UpdateRoleSchema), (c) => controller.updateRole(c)) // was /admin/:id/role

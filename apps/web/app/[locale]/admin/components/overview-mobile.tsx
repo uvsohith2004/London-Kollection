@@ -24,7 +24,7 @@ import { ProductInsightsPanel } from "./product-insights-panel"
 import { LiveActivityFeed } from "./live-activity-feed"
 import { DetailSheet } from "./detail-sheet"
 import { InsightDetailSheet } from "./insight-detail-sheet"
-import { formatCurrency } from "@/lib/format"
+import { useFormatCurrency } from "@/lib/format"
 import type {
   DashboardDetailKey,
   ProductInsight,
@@ -36,6 +36,7 @@ import type {
  * for KPIs, and bottom sheets instead of side panels for every drill-down.
  */
 export default function OverviewPageMobile() {
+  const formatCurrency = useFormatCurrency()
   const { data, isLoading, isError } = useDashboardQuery()
   const { mutate: exportReport, isPending: isExporting } =
     useExportReportMutation()

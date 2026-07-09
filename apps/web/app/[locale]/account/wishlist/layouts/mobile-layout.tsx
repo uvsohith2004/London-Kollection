@@ -3,17 +3,14 @@ import Link from "next/link";
 import { Button } from "@workspace/ui/components/button";
 import { Trash2, Heart } from "lucide-react";
 import { toast } from "sonner";
-import { useRemoveFromWishlistMutation } from "../services/mutations";
+import { useWishlistStore } from "@/store/wishlist-store";
 
 export default function MobileWishlistLayout({ items }: { items: any[] }) {
-  const removeMutation = useRemoveFromWishlistMutation();
+  const removeFromWishlist = useWishlistStore((state) => state.removeFromWishlist);
 
   const handleRemove = (id: string, name: string) => {
-    removeMutation.mutate(id, {
-      onSuccess: () => {
-        toast.success(`${name} removed`);
-      }
-    });
+    removeFromWishlist(id);
+    toast.success(`${name} removed`);
   };
 
   if (items.length === 0) {
@@ -40,28 +37,28 @@ export default function MobileWishlistLayout({ items }: { items: any[] }) {
         {items.map((item) => (
           <div key={item.id} className="bg-card border border-border rounded-2xl p-4 shadow-sm">
             <div className="flex gap-4">
-              <Link href={`/products/${item.productId}`} className="shrink-0">
+              <Link href={item.variantId ? `/products/${item.productSlug}/${item.variantId}` : `/products/${item.productSlug}`} className="shrink-0">
                 <div className="relative w-20 aspect-[3/4] bg-secondary rounded-lg overflow-hidden">
                   {item.image && (
-                    <Image src={item.image} alt={item.name} fill className="object-cover" />
+                    <Image src={item.image} alt={item.productName} fill className="object-cover" />
                   )}
                 </div>
               </Link>
               <div className="flex-1 flex flex-col pt-1">
-                <h3 className="font-medium text-sm text-foreground line-clamp-2 leading-snug mb-1">{item.name}</h3>
+                <h3 className="font-medium text-sm text-foreground line-clamp-2 leading-snug mb-1">{item.productName}</h3>
                 <span className="text-xs font-medium text-muted-foreground mb-4">
                   ${Number(item.price).toFixed(2)}
                 </span>
                 
                 <div className="mt-auto flex gap-2">
                   <Button variant="outline" size="sm" className="flex-1 h-10 rounded-xl bg-card border-border text-xs">
-                    <Link href={`/products/${item.productId}`}>View</Link>
+                    <Link href={item.variantId ? `/products/${item.productSlug}/${item.variantId}` : `/products/${item.productSlug}`}>View</Link>
                   </Button>
                   <Button 
                     variant="outline" 
                     size="icon" 
                     className="h-10 w-10 shrink-0 rounded-xl bg-card border-border text-destructive hover:bg-destructive/10"
-                    onClick={() => handleRemove(item.id, item.name)}
+                    onClick={() => handleRemove(item.id, item.productName)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

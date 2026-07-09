@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
 } from "recharts"
 import { cn } from "@workspace/ui/lib/utils"
-import { formatCurrency, formatCompact } from "@/lib/format"
+import { useFormatCurrency, formatCompact } from "@/lib/format"
 import type { RevenuePoint } from "../../../../types/overview-types"
 
 export interface RevenueTrajectoryChartProps {
@@ -22,6 +22,7 @@ export interface RevenueTrajectoryChartProps {
 }
 
 export function RevenueTrajectoryChart({ data, height = 350, compact = false, className }: RevenueTrajectoryChartProps) {
+  const formatCurrency = useFormatCurrency()
   return (
     <div className={cn("w-full", className)} style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">

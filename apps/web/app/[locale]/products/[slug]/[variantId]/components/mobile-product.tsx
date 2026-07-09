@@ -10,25 +10,20 @@ import { AddToCartButton } from "@/components/add-to-cart-button";
 import { Heart, Share2 } from "lucide-react";
 import { useWishlistStore } from "@/store/wishlist-store";
 import { ShareModal } from "@/components/share-modal";
-import { useRouter, usePathname } from "@/i18n/routing";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
   type CarouselApi
 } from "@workspace/ui/components/carousel";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@workspace/ui/components/accordion";
 
-export function MobileProduct({ product, variantId }: { product: Product, variantId?: string }) {
-  const router = useRouter();
+export function MobileProduct({ product, variantId }: { product: Product, variantId:string }) {
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlistStore();
   const [isSharing, setIsSharing] = useState(false);
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
 
@@ -44,20 +39,21 @@ export function MobileProduct({ product, variantId }: { product: Product, varian
   }, [api]);
 
   // Initialize state with first available values for options
-  const [selectedOptions, setSelectedOptions] = useState<
-    Record<string, string>
-  >(() => {
-    if (variantId && product.variants) {
-      const v = product.variants.find(v => v.id === variantId);
-      if (v && v.combinations) {
-        return v.combinations;
-      }
-    }
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
-    product.options?.forEach((opt) => {
-      const firstVal = opt.values[0];
-      if (firstVal) {
-        initial[opt.name] = firstVal.value;
+    product.options?.forEach((opt: any) => {
+      const urlValue = searchParams.get(opt.name.toLowerCase());
+      
+      const isValidUrlValue = opt.values.some((v: any) => {
+        const vStr = typeof v === 'string' ? v : v.value;
+        return vStr === urlValue;
+      });
+
+      if (urlValue && isValidUrlValue) {
+        initial[opt.name] = urlValue;
+      } else if (opt.values && opt.values.length > 0) {
+        const firstVal = opt.values[0];
+        initial[opt.name] = typeof firstVal === 'string' ? firstVal : firstVal.value;
       }
     });
     return initial;
@@ -66,31 +62,22 @@ export function MobileProduct({ product, variantId }: { product: Product, varian
 
   const activeVariant = useMemo(() => {
     if (!product.variants || product.variants.length === 0) return null;
-    return (
-      product.variants.find((variant) => {
-        return Object.entries(selectedOptions).every(
-          ([key, val]) => variant.combinations?.[key] === val
-        );
-      }) || null
-    );
+    return product.variants.find((variant: any) => {
+      return Object.entries(selectedOptions).every(([key, val]) => {
+        const variantOptionsMap = variant.optionValues || variant.combinations || {};
+        return variantOptionsMap[key] === val;
+      });
+    }) || null;
   }, [product.variants, selectedOptions]);
 
   // Determine price to show
   const currentPrice = activeVariant?.price || product.price;
 
   const handleOptionSelect = (optionName: string, value: string) => {
-    const newOptions = { ...selectedOptions, [optionName]: value };
-    setSelectedOptions(newOptions);
-    
-    // Find the variant with these new options and update URL
-    if (product.variants) {
-      const newVariant = product.variants.find(v => 
-        Object.entries(newOptions).every(([k, val]) => v.combinations?.[k] === val)
-      );
-      if (newVariant) {
-        router.replace(`/products/${product.slug}/${newVariant.id}` as any);
-      }
-    }
+    setSelectedOptions((prev) => ({ ...prev, [optionName]: value }));
+    const params = new URLSearchParams(searchParams.toString());
+    params.set(optionName.toLowerCase(), value);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
   const handleWishlistToggle = () => {
@@ -178,34 +165,43 @@ export function MobileProduct({ product, variantId }: { product: Product, varian
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-serif tracking-tight leading-tight">{product.title}</h1>
           <div className="flex items-center gap-3">
-            <span className="text-xl font-medium">{Number(currentPrice).toFixed(2)} KWD</span>
+            <span className="text-xl font-medium">${Number(currentPrice).toFixed(2)}</span>
             {Number(product.discount) > 0 && !activeVariant?.price && (
               <span className="text-sm text-muted-foreground line-through">
-                {Number(product.price).toFixed(2)} KWD
+                ${Number(product.price).toFixed(2)}
               </span>
             )}
           </div>
         </div>
 
         {/* Options Selector */}
-        {product.options && product.options.map((option, idx) => (
-          <div key={option.id || option.name || idx} className="flex flex-col gap-3">
-            <h3 className="text-sm font-medium uppercase tracking-widest">{option.name}</h3>
-            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-              {option.values.map((val, vIdx) => {
-                const isSelected = selectedOptions[option.name] === val.value;
+        {product.options && product.options.map((option: any, idx: number) => (
+          <div key={option.id || option.name || idx} className="flex flex-col gap-4 border-t border-border/50 pt-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium tracking-widest uppercase">
+                {option.name}
+              </h3>
+              <span className="text-sm text-muted-foreground">
+                {selectedOptions[option.name]}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-3 pb-2">
+              {option.values.map((val: any, vIdx: number) => {
+                const valueStr = typeof val === 'string' ? val : val.value;
+                const keyStr = typeof val === 'string' ? `${option.name}-${vIdx}` : val.id;
+                const isSelected = selectedOptions[option.name] === valueStr;
                 return (
                   <button
-                    key={val.id || val.value || vIdx}
-                    onClick={() => handleOptionSelect(option.name, val.value)}
+                    key={keyStr}
+                    onClick={() => handleOptionSelect(option.name, valueStr)}
                     className={cn(
-                      "px-6 py-3 rounded-md border text-sm font-medium whitespace-nowrap transition-all",
-                      isSelected 
-                        ? "border-primary bg-primary text-primary-foreground shadow-sm" 
+                      "rounded-md border px-6 py-3 text-sm font-medium transition-all",
+                      isSelected
+                        ? "border-primary bg-primary text-primary-foreground shadow-sm"
                         : "border-border/40 text-foreground hover:border-foreground/40 hover:bg-secondary/20"
                     )}
                   >
-                    {val.value}
+                    {valueStr}
                   </button>
                 );
               })}
@@ -253,16 +249,24 @@ export function MobileProduct({ product, variantId }: { product: Product, varian
           <Button
             variant="outline"
             size="icon"
-            className={cn("h-14 w-14 rounded-full shrink-0 transition-colors", inWishlist ? "bg-red-50/50 border-red-200" : "")}
+            className={cn(
+              "h-14 w-14 shrink-0 rounded-full transition-colors duration-300",
+              inWishlist ? "border-red-200 bg-red-50/50" : ""
+            )}
             onClick={handleWishlistToggle}
           >
-            <Heart className={cn("w-5 h-5", inWishlist ? "fill-red-500 text-red-500" : "text-foreground")} />
+            <Heart 
+              className={cn(
+                "h-5 w-5 transition-colors",
+                inWishlist ? "fill-red-500 text-red-500" : "text-foreground"
+              )} 
+            />
           </Button>
           
           <Button
             variant="outline"
             size="icon"
-            className="h-14 w-14 rounded-full shrink-0"
+            className="h-14 w-14 shrink-0 rounded-full"
             onClick={() => setIsSharing(true)}
           >
             <Share2 className="w-5 h-5" />

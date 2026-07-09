@@ -12,6 +12,7 @@ import { Loader2, Camera, User, CalendarIcon } from "lucide-react"
 import { PhoneInput } from "@/components/phone-input"
 import { UserAvatar } from "@/components/user-avatar"
 import { Calendar } from "@workspace/ui/components/calendar"
+import { ThemeSelector } from "../components/theme-selector"
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover"
 import { format } from "date-fns"
 import { cn } from "@workspace/ui/lib/utils"
@@ -141,6 +142,10 @@ export default function MobileProfileLayout({ session, formData, setFormData, ha
               />
             </PopoverContent>
           </Popover>
+        </div>
+
+        <div className="pb-8">
+          <ThemeSelector />
         </div>
 
         <div className="fixed bottom-16 left-0 right-0 p-4 bg-background/80 backdrop-blur-xl border-t border-border z-10 md:hidden pb-[calc(1rem+env(safe-area-inset-bottom))]">

@@ -141,7 +141,8 @@ export class CheckoutService {
 
       const { SettingsService } = await import("../administration/management/settings.service")
       const settingsService = new SettingsService()
-      const prefixSetting = await settingsService.getSetting("orderPrefix")
+      const settings = await settingsService.getSettings()
+      const prefixSetting = settings?.orderPrefix
       const prefix = prefixSetting ? String(prefixSetting).toUpperCase() : "LC"
       
       const randomDigits = Math.floor(100000 + Math.random() * 900000)

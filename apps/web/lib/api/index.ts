@@ -296,6 +296,9 @@ export const deleteOccasion = async (id: string) => {
 export const fetchAdminUsers = async (params?: any) => {
   return await get("/admin/users", { params })
 }
+export const searchAdminUsers = async (q: string) => {
+  return await get("/admin/users/search", { params: { q } })
+}
 export const updateAdminUserRole = async (
   id: string,
   payload: { role: string }

@@ -8,6 +8,7 @@ import { cn } from "@workspace/ui/lib/utils";
 import { useRemoveCartItemMutation, useUpdateCartItemMutation } from "../mutations";
 import { useDebounceCallback } from "@/hooks/use-debounce";
 import { useState, useEffect } from "react";
+import { Price } from "@/components/price";
 
 function DesktopCartItem({ item }: { item: CartSummary["items"][number] }) {
   const { mutate: updateQuantity } = useUpdateCartItemMutation();
@@ -88,9 +89,9 @@ function DesktopCartItem({ item }: { item: CartSummary["items"][number] }) {
             )}
           </div>
           <div className="text-right">
-            <p className="font-semibold text-lg">{Number(item.unitPrice).toFixed(2)} KWD</p>
+            <Price amount={item.unitPrice} className="font-semibold text-lg" />
             {item.compareAtPrice && item.compareAtPrice > item.unitPrice && (
-              <p className="text-sm text-muted-foreground line-through">{Number(item.compareAtPrice).toFixed(2)} KWD</p>
+              <Price amount={item.compareAtPrice} className="text-sm text-muted-foreground line-through block" />
             )}
           </div>
         </div>
@@ -163,19 +164,19 @@ export function DesktopCart({ summary }: { summary?: CartSummary }) {
           <div className="flex flex-col gap-4 text-sm mb-6">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Subtotal</span>
-              <span className="font-medium">{subtotal.toFixed(2)} KWD</span>
+              <Price amount={subtotal} className="font-medium" />
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Delivery</span>
               {deliveryFee === 0 ? (
                 <span className="font-medium uppercase text-xs tracking-widest text-green-600">Complimentary</span>
               ) : (
-                <span className="font-medium">{deliveryFee.toFixed(2)} KWD</span>
+                <Price amount={deliveryFee} className="font-medium" />
               )}
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Estimated Tax</span>
-              <span className="font-medium">{taxTotal > 0 ? `${taxTotal.toFixed(2)} KWD` : "Calculated at checkout"}</span>
+              <span className="font-medium">{taxTotal > 0 ? <Price amount={taxTotal} /> : "Calculated at checkout"}</span>
             </div>
           </div>
 
@@ -183,7 +184,7 @@ export function DesktopCart({ summary }: { summary?: CartSummary }) {
 
           <div className="flex justify-between items-baseline mb-8">
             <span className="font-medium uppercase tracking-widest text-sm">Total</span>
-            <span className="text-2xl font-bold">{total.toFixed(2)} KWD</span>
+            <Price amount={total} className="text-2xl font-bold" />
           </div>
 
           <Link href="/checkout" className="block w-full">

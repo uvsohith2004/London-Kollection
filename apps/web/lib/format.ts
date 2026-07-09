@@ -1,10 +1,16 @@
-/** Dynamic currency formatter, shared by every overview component. */
-export function formatCurrency(value: number, currencyCode: string = "KWD") {
-  return new Intl.NumberFormat("en-KW", {
-    style: "currency",
-    currency: currencyCode,
-    maximumFractionDigits: 0,
-  }).format(value)
+import { useSettings } from "@/components/providers/settings-provider"
+
+/** Dynamic currency formatter hook, shared by every overview component. */
+export function useFormatCurrency() {
+  const { settings } = useSettings()
+  
+  return function formatCurrency(value: number, currencyCode?: string) {
+    return new Intl.NumberFormat("en-KW", {
+      style: "currency",
+      currency: currencyCode || settings.defaultCurrency || "KWD",
+      maximumFractionDigits: 0,
+    }).format(value)
+  }
 }
 
 /** Compact number formatter for axis ticks etc. — 12500 -> "12.5k" */

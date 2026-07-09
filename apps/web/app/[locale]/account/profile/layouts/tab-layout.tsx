@@ -12,6 +12,7 @@ import { Loader2, Camera, User, CalendarIcon } from "lucide-react"
 import { PhoneInput } from "@/components/phone-input"
 import { UserAvatar } from "@/components/user-avatar"
 import { Calendar } from "@workspace/ui/components/calendar"
+import { ThemeSelector } from "../components/theme-selector"
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover"
 import { format } from "date-fns"
 import { cn } from "@workspace/ui/lib/utils"
@@ -144,6 +145,10 @@ export default function TabProfileLayout({ session, formData, setFormData, handl
               </PopoverContent>
             </Popover>
           </div>
+        </div>
+
+        <div className="pt-6 mt-2 border-t border-border">
+          <ThemeSelector />
         </div>
 
         <div className="pt-6 mt-2 border-t border-border flex justify-end">

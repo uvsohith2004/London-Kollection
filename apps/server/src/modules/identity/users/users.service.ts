@@ -1,7 +1,7 @@
 import { NotFoundError, BadRequestError } from "@/core/errors"
 import db from "@/db"
 import { user } from "@/db/schemas"
-import { eq } from "drizzle-orm"
+import { eq, ilike, or } from "drizzle-orm"
 import { MockOTPProvider } from "../../providers/otp.provider"
 
 export class UsersService {
@@ -85,6 +85,17 @@ export class UsersService {
 
   async listUsersForAdmin() {
     return await db.select().from(user)
+  }
+
+  async searchUsersForAdmin(query: string) {
+    if (!query) return []
+    const q = `%${query}%`
+    return await db.select().from(user).where(
+      or(
+        ilike(user.name, q),
+        ilike(user.email, q)
+      )
+    ).limit(20)
   }
 
   async updateUserRoleByAdmin(id: string, role: string) {

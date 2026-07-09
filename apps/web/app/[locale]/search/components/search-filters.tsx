@@ -7,6 +7,7 @@ import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select"
 import { cn } from "@workspace/ui/lib/utils"
+import { useSettings } from "@/components/providers/settings-provider"
 
 const CATEGORIES = [
   { label: "Fashion", value: "fashion" },
@@ -19,6 +20,7 @@ export function SearchFilters({ className }: { className?: string }) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const { settings } = useSettings()
 
   const [minPrice, setMinPrice] = useState(searchParams.get("minPrice") || "")
   const [maxPrice, setMaxPrice] = useState(searchParams.get("maxPrice") || "")
@@ -123,7 +125,7 @@ export function SearchFilters({ className }: { className?: string }) {
 
       {/* Price Range */}
       <div className="space-y-4">
-        <h3 className="text-sm font-semibold tracking-widest uppercase text-foreground">Price (KWD)</h3>
+        <h3 className="text-sm font-semibold tracking-widest uppercase text-foreground">Price ({settings.defaultCurrency || "KWD"})</h3>
         <div className="flex items-center gap-3">
           <div className="space-y-1.5 flex-1">
             <Label htmlFor="min-price" className="text-xs text-muted-foreground">Min</Label>

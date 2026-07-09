@@ -47,7 +47,6 @@ const NAV_ITEMS = [
   { name: "Taxes", href: "/admin/taxes", icon: Receipt },
   { name: "Orders", href: "/admin/orders", icon: ShoppingBag },
   { name: "Customers", href: "/admin/customers", icon: Users },
-  { name: "Marketing", href: "/admin/marketing", icon: Megaphone },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ]
 

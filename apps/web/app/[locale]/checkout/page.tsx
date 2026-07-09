@@ -14,6 +14,8 @@ import { ArrowLeft, MapPin, Plus } from 'lucide-react';
 import { CheckoutStepper } from './components/checkout-stepper';
 import { useAddressesQuery, useCreateAddressMutation, useUpdateAddressMutation } from './queries';
 import { cn } from '@workspace/ui/lib/utils';
+import { useSettings } from "@/components/providers/settings-provider";
+import { Price } from "@/components/price";
 
 const addressSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -60,6 +62,9 @@ export default function CheckoutPage() {
   const updateAddr = useUpdateAddressMutation();
 
   const [selectedShippingAddressId, setSelectedShippingAddressId] = useState<string | null>(null);
+
+  const { settings } = useSettings();
+  const currencyCode = settings.defaultCurrency || "KWD";
 
   const router = useRouter();
 
@@ -351,7 +356,7 @@ export default function CheckoutPage() {
                         <p className="text-xs text-muted-foreground mt-1">Size: {item.variant?.size || 'Standard'}</p>
                       </div>
                       <div className="font-medium text-sm flex items-center">
-                        {Number(item.unitPrice).toFixed(2)} KWD
+                        <Price amount={item.unitPrice} />
                       </div>
                     </div>
                   ))}
@@ -362,15 +367,15 @@ export default function CheckoutPage() {
                 <div className="space-y-3 text-sm mb-6">
                   <div className="flex justify-between text-muted-foreground">
                     <span>Subtotal</span>
-                    <span>{preview?.subtotal !== undefined ? `${preview.subtotal.toFixed(2)} KWD` : '0.00 KWD'}</span>
+                    <span>{preview?.subtotal !== undefined ? <Price amount={preview.subtotal} /> : <Price amount={0} />}</span>
                   </div>
                   <div className="flex justify-between text-muted-foreground">
                     <span>Shipping</span>
-                    <span>{preview?.deliveryFee ? `${preview.deliveryFee.toFixed(2)} KWD` : 'Calculated at checkout'}</span>
+                    <span>{preview?.deliveryFee ? <Price amount={preview.deliveryFee} /> : 'Calculated at checkout'}</span>
                   </div>
                   <div className="flex justify-between text-muted-foreground">
                     <span>Estimated Tax</span>
-                    <span>{preview?.taxTotal !== undefined ? `${preview.taxTotal.toFixed(2)} KWD` : '0.00 KWD'}</span>
+                    <span>{preview?.taxTotal !== undefined ? <Price amount={preview.taxTotal} /> : <Price amount={0} />}</span>
                   </div>
                 </div>
 
@@ -379,7 +384,7 @@ export default function CheckoutPage() {
                 <div className="flex justify-between items-end mb-6">
                   <span className="font-semibold text-lg text-foreground">Total</span>
                   <div className="text-right">
-                    <span className="text-xs text-muted-foreground block mb-1">KWD</span>
+                    <span className="text-xs text-muted-foreground block mb-1 uppercase">{currencyCode}</span>
                     <span className="font-bold text-3xl text-foreground">{preview?.grandTotal !== undefined ? `${preview.grandTotal.toFixed(2)}` : '0.00'}</span>
                   </div>
                 </div>

@@ -1,15 +1,34 @@
 'use client';
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useUserOrdersQuery } from './services/queries';
-import { Package, ChevronDown, ChevronUp, Clock, CheckCircle2, Truck, XCircle, Search, Phone } from 'lucide-react';
+import { Package, Clock, CheckCircle2, Truck, XCircle, Search, Filter, ChevronDown, ShoppingBag, Calendar, MapPin, Phone, Info } from 'lucide-react';
 import { format } from 'date-fns';
+import Image from 'next/image';
+import { Button } from '@workspace/ui/components/button';
+
+const formatAddressString = (addressData: any) => {
+  if (!addressData) return 'No address provided';
+  if (typeof addressData === 'string') {
+    try {
+      if (addressData.trim().startsWith('{')) {
+        const parsed = JSON.parse(addressData);
+        return Object.values(parsed).filter(Boolean).join(', ');
+      }
+    } catch (e) {
+      return addressData;
+    }
+  }
+  return addressData;
+};
 
 export default function AccountOrdersPage() {
+  const router = useRouter();
   const { data: orders = [], isLoading } = useUserOrdersQuery();
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [showFilters, setShowFilters] = useState(false);
 
   const filteredOrders = useMemo(() => {
     return orders.filter((order: any) => {
@@ -19,163 +38,207 @@ export default function AccountOrdersPage() {
     });
   }, [orders, searchQuery, statusFilter]);
 
-  const getStatusIcon = (status: string) => {
-    switch(status?.toUpperCase()) {
-      case 'DELIVERED': return <CheckCircle2 className="w-5 h-5 text-green-500" />;
-      case 'SHIPPED': return <Truck className="w-5 h-5 text-blue-500" />;
-      case 'CANCELLED': return <XCircle className="w-5 h-5 text-red-500" />;
-      default: return <Clock className="w-5 h-5 text-amber-500" />;
+  const getStatusConfig = (status: string) => {
+    const s = status?.toUpperCase();
+    switch(s) {
+      case 'DELIVERED': 
+        return { label: 'Delivered', color: 'text-emerald-700 dark:text-emerald-400', bgColor: 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20', icon: <CheckCircle2 className="w-4 h-4" /> };
+      case 'SHIPPED': 
+        return { label: 'Shipped', color: 'text-blue-700 dark:text-blue-400', bgColor: 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20', icon: <Truck className="w-4 h-4" /> };
+      case 'CANCELLED': 
+        return { label: 'Cancelled', color: 'text-red-700 dark:text-red-400', bgColor: 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/20', icon: <XCircle className="w-4 h-4" /> };
+      default: 
+        return { label: status || 'Pending', color: 'text-amber-700 dark:text-amber-400', bgColor: 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20', icon: <Clock className="w-4 h-4" /> };
     }
   };
 
-  const isActiveOrder = (status: string) => {
-    const s = status?.toLowerCase();
-    return s && !['delivered', 'completed', 'cancelled', 'returned', 'refunded'].includes(s);
+  const orderCounts = {
+    all: orders.length,
+    pending: orders.filter((o: any) => !['DELIVERED', 'SHIPPED', 'CANCELLED'].includes(o.status?.toUpperCase())).length,
+    shipped: orders.filter((o: any) => o.status?.toUpperCase() === 'SHIPPED').length,
+    delivered: orders.filter((o: any) => o.status?.toUpperCase() === 'DELIVERED').length,
+    cancelled: orders.filter((o: any) => o.status?.toUpperCase() === 'CANCELLED').length,
   };
 
   if (isLoading) return <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">Loading Orders...</div>;
 
   return (
     <div className="max-w-5xl py-8 space-y-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <h1 className="text-3xl font-serif tracking-tight text-foreground">My Orders</h1>
-        
-        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input 
-              type="text" 
-              placeholder="Search Order ID..." 
-              className="pl-9 pr-4 py-2 border rounded-full bg-background outline-none focus:border-primary text-sm w-full sm:w-64"
+      <div className="mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <div>
+            <h1 className="text-3xl font-serif tracking-tight text-foreground">My Orders</h1>
+            <p className="text-muted-foreground mt-1">Manage and track your recent purchases</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">
+              {filteredOrders.length} {filteredOrders.length === 1 ? 'order' : 'orders'}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search by order number..."
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-card text-foreground border rounded-xl outline-none focus:ring-2 focus:ring-primary focus:border-transparent shadow-sm"
             />
           </div>
-          <select 
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-            className="border rounded-full px-4 py-2 bg-background outline-none text-sm focus:border-primary"
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-2 px-4 py-2.5 border rounded-xl shadow-sm transition-colors ${
+              showFilters
+                ? 'bg-foreground text-background border-foreground'
+                : 'bg-card text-foreground border-border hover:bg-muted/50'
+            }`}
           >
-            <option value="All">All Statuses</option>
-            <option value="Pending">Pending</option>
-            <option value="Confirmed">Confirmed</option>
-            <option value="Shipped">Shipped</option>
-            <option value="Delivered">Delivered</option>
-            <option value="Cancelled">Cancelled</option>
-          </select>
+            <Filter className="w-4 h-4" />
+            <span className="text-sm font-medium">Filter</span>
+            <ChevronDown className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+          </button>
         </div>
+
+        {showFilters && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {[
+              { id: 'All', label: 'All', count: orderCounts.all },
+              { id: 'Pending', label: 'Pending', count: orderCounts.pending },
+              { id: 'Shipped', label: 'Shipped', count: orderCounts.shipped },
+              { id: 'Delivered', label: 'Delivered', count: orderCounts.delivered },
+              { id: 'Cancelled', label: 'Cancelled', count: orderCounts.cancelled },
+            ].map((status) => (
+              <button
+                key={status.id}
+                onClick={() => setStatusFilter(status.id)}
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+                  statusFilter === status.id
+                    ? 'bg-foreground text-background'
+                    : 'bg-card text-muted-foreground hover:bg-muted border border-border'
+                }`}
+              >
+                {status.label}
+                <span className="ml-2 text-xs opacity-60">({status.count})</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {filteredOrders.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 bg-card rounded-2xl border">
-          <Package className="w-12 h-12 text-muted-foreground mb-4" />
-          <h2 className="text-xl font-medium mb-2">No orders found</h2>
-          <p className="text-muted-foreground mb-6">We couldn't find any orders matching your criteria.</p>
+        <div className="bg-card rounded-2xl shadow-sm border p-12 text-center">
+          <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center mx-auto mb-4">
+            <Package className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-serif tracking-tight text-foreground mb-2">No orders found</h3>
+          <p className="text-muted-foreground">
+            {searchQuery || statusFilter !== 'All'
+              ? 'Try adjusting your filters or search query.'
+              : 'Orders will appear here once they are placed.'}
+          </p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {filteredOrders.map((order: any) => {
-            const isExpanded = expandedId === order.id;
-            const active = isActiveOrder(order.status);
-            
+            const config = getStatusConfig(order.status);
+            const itemCount = order.items?.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0) || 0;
+            const firstImage = order.items?.[0]?.productMetadata?.images?.[0] || order.items?.[0]?.productMetadata?.image;
+
             return (
-              <div key={order.id} className="bg-card text-card-foreground border rounded-2xl shadow-sm overflow-hidden transition-all duration-300">
-                <div 
-                  className="p-5 sm:p-6 cursor-pointer hover:bg-muted/30 transition-colors"
-                  onClick={() => setExpandedId(isExpanded ? null : order.id)}
-                >
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+              <div
+                key={order.id}
+                onClick={() => router.push(`/account/orders/${order.id}`)}
+                className="bg-card rounded-2xl shadow-sm border border-border hover:shadow-md hover:border-primary/20 transition-all duration-200 cursor-pointer group p-5 sm:p-6 flex flex-col gap-5"
+              >
+                {/* Header Section: Status, Order Details, Price */}
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                  <div className="space-y-3 flex-1">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${config.color} ${config.bgColor}`}>
+                        {config.icon}
+                        {config.label}
+                      </span>
+                      <span className="text-sm font-medium text-muted-foreground break-all">
+                        Ref: {order.orderNumber}
+                      </span>
+                    </div>
                     
-                    {/* Header Info */}
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-secondary flex items-center justify-center rounded-full shrink-0">
-                        {getStatusIcon(order.status)}
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-lg">{order.orderNumber}</h3>
-                        <p className="text-sm text-muted-foreground">{format(new Date(order.createdAt), "MMM dd, yyyy")}</p>
-                      </div>
+                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-foreground/80">
+                      <span className="flex items-center gap-2">
+                        <ShoppingBag className="w-4 h-4 opacity-70" />
+                        {itemCount} {itemCount === 1 ? 'item' : 'items'}
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 opacity-70" />
+                        {format(new Date(order.createdAt), "MMM dd, yyyy - h:mm a")}
+                      </span>
                     </div>
+                  </div>
 
-                    {/* Stats & Toggle */}
-                    <div className="flex flex-wrap items-center gap-6 w-full md:w-auto justify-between md:justify-end">
-                      <div className="flex flex-col">
-                        <span className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">Status</span>
-                        <span className="font-medium capitalize text-sm">{order.status || 'Pending'}</span>
-                      </div>
-                      
-                      <div className="flex flex-col">
-                        <span className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">Payment</span>
-                        <span className="font-medium capitalize text-sm">{order.paymentStatus || 'Pending'}</span>
-                      </div>
-
-                      <div className="flex flex-col text-right">
-                        <span className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">Total</span>
-                        <span className="font-bold">{Number(order.totalAmount).toFixed(3)} KWD</span>
-                      </div>
-
-                      <div className="p-2 hover:bg-muted rounded-full">
-                        {isExpanded ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}
-                      </div>
-                    </div>
+                  <div className="text-left sm:text-right shrink-0">
+                    <p className="text-2xl  font-semibold text-foreground tracking-tight">
+                      {Number(order.totalAmount).toFixed(3)} KWD
+                    </p>
                   </div>
                 </div>
 
-                {/* Expanded State */}
-                {isExpanded && (
-                  <div className="border-t p-5 sm:p-6 bg-muted/10 space-y-6">
-                    {/* Active Order Support Banner */}
-                    {active && (
-                      <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="flex items-center gap-3 text-primary">
-                          <Phone className="w-5 h-5" />
-                          <span className="font-medium">Need help with your order? Contact us directly.</span>
-                        </div>
-                        <div className="flex gap-4">
-                          <a href="tel:97973479" className="font-bold hover:underline">97973479</a>
-                          <a href="tel:51759962" className="font-bold hover:underline">51759962</a>
-                        </div>
+                {/* Details Section: Image, Full Address, and Call Buttons */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 pt-2">
+                  <div className="relative w-16 h-16 shrink-0 rounded-xl overflow-hidden bg-secondary border">
+                    {firstImage ? (
+                      <Image 
+                        src={firstImage}
+                        alt="Product Image"
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <Package className="w-6 h-6 text-muted-foreground" />
                       </div>
                     )}
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      {/* Products Summary Preview */}
-                      <div>
-                        <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-3">Items ({order.items?.length || 0})</h4>
-                        <div className="space-y-3">
-                          {order.items?.slice(0, 3).map((item: any) => (
-                            <div key={item.id} className="flex justify-between items-center text-sm border-b pb-2 last:border-0">
-                              <span className="truncate pr-4 flex-1 font-medium">{item.productMetadata?.name || item.productMetadata?.title || 'Product'}</span>
-                              <span className="text-muted-foreground whitespace-nowrap">x{item.quantity}</span>
-                            </div>
-                          ))}
-                          {order.items?.length > 3 && (
-                            <p className="text-xs text-muted-foreground pt-1">+ {order.items.length - 3} more items</p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Delivery Info */}
-                      <div>
-                        <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-3">Delivery Address</h4>
-                        <div className="bg-background p-4 rounded-xl border text-sm">
-                          <p className="font-medium mb-1">{order.shippingAddress?.name || '—'}</p>
-                          <p className="text-muted-foreground">{order.shippingAddress?.addressLine1 || '—'}</p>
-                          <p className="text-muted-foreground">{[order.shippingAddress?.city, order.shippingAddress?.country].filter(Boolean).join(', ')}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="pt-4 flex justify-end">
-                      <Link 
-                        href={`/account/orders/${order.id}`}
-                        className="bg-primary text-primary-foreground px-6 py-2.5 rounded-full text-sm font-semibold hover:bg-primary/90 transition-colors"
-                      >
-                        View Full Details & Tracking
-                      </Link>
+                  </div>
+                  
+                  <div className="flex-1 min-w-0 flex items-start gap-3">
+                    <MapPin className="w-4 h-4 text-muted-foreground shrink-0 mt-1" />
+                    <div className="text-sm text-muted-foreground">
+                      <p className="font-medium text-foreground mb-1">{order.shippingAddress?.name || 'Customer'}</p>
+                      <p className="leading-relaxed">
+                        {formatAddressString(order.shippingAddress?.addressLine1)}, 
+                        {[order.shippingAddress?.city, order.shippingAddress?.country].filter(Boolean).join(', ')}
+                      </p>
                     </div>
                   </div>
-                )}
+
+                  {/* Immediate Call Action Buttons with Context Label */}
+                  <div className="shrink-0 flex flex-col items-start sm:items-end gap-2 w-full sm:w-auto mt-3 sm:mt-0">
+                    <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                      <Info className="w-3.5 h-3.5" />
+                      Need fast processing or have doubts? Contact owner:
+                    </p>
+                    <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+                      <a 
+                        href="tel:97973479" 
+                        onClick={(e) => e.stopPropagation()} 
+                        className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 rounded-lg text-sm font-semibold transition-colors border border-blue-200 dark:border-blue-800"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                        97973479
+                      </a>
+                      <a 
+                        href="tel:51759962" 
+                        onClick={(e) => e.stopPropagation()} 
+                        className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 rounded-lg text-sm font-semibold transition-colors border border-blue-200 dark:border-blue-800"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                        51759962
+                      </a>
+                    </div>
+                  </div>
+                </div>
               </div>
             );
           })}

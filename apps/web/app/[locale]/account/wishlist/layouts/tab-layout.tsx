@@ -3,17 +3,14 @@ import Link from "next/link";
 import { Button } from "@workspace/ui/components/button";
 import { X, Heart } from "lucide-react";
 import { toast } from "sonner";
-import { useRemoveFromWishlistMutation } from "../services/mutations";
+import { useWishlistStore } from "@/store/wishlist-store";
 
 export default function TabWishlistLayout({ items }: { items: any[] }) {
-  const removeMutation = useRemoveFromWishlistMutation();
+  const removeFromWishlist = useWishlistStore((state) => state.removeFromWishlist);
 
   const handleRemove = (id: string, name: string) => {
-    removeMutation.mutate(id, {
-      onSuccess: () => {
-        toast.success(`${name} removed`);
-      }
-    });
+    removeFromWishlist(id);
+    toast.success(`${name} removed`);
   };
 
   if (items.length === 0) {
@@ -43,7 +40,7 @@ export default function TabWishlistLayout({ items }: { items: any[] }) {
             {item.image ? (
               <Image
                 src={item.image}
-                alt={item.name}
+                alt={item.productName}
                 fill
                 className="object-cover"
               />
@@ -53,7 +50,7 @@ export default function TabWishlistLayout({ items }: { items: any[] }) {
               </div>
             )}
             <button
-              onClick={() => handleRemove(item.id, item.name)}
+              onClick={() => handleRemove(item.id, item.productName)}
               className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-background/80 text-foreground backdrop-blur-sm transition-all hover:bg-foreground hover:text-background"
             >
               <X className="h-4 w-4" />
@@ -61,9 +58,9 @@ export default function TabWishlistLayout({ items }: { items: any[] }) {
           </div>
 
           <div className="flex flex-col gap-1 mb-4">
-            <Link href={`/products/${item.productId}`} className="hover:underline">
+            <Link href={item.variantId ? `/products/${item.productSlug}/${item.variantId}` : `/products/${item.productSlug}`} className="hover:underline">
               <h3 className="font-serif text-base tracking-tight line-clamp-1 text-foreground">
-                {item.name}
+                {item.productName}
               </h3>
             </Link>
             <span className="text-sm font-medium text-muted-foreground">
@@ -72,7 +69,7 @@ export default function TabWishlistLayout({ items }: { items: any[] }) {
           </div>
 
           <Button variant="outline" size="sm" className="w-full mt-auto rounded-xl border-border">
-            <Link href={`/products/${item.productId}`} className="w-full h-full flex items-center justify-center">
+            <Link href={item.variantId ? `/products/${item.productSlug}/${item.variantId}` : `/products/${item.productSlug}`} className="w-full h-full flex items-center justify-center">
               View Product
             </Link>
           </Button>

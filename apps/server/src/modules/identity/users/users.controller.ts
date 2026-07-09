@@ -109,6 +109,12 @@ export class UsersController {
     return c.json(ok(items))
   }
 
+  async searchAdmin(c: Context) {
+    const q = c.req.query("q") || ""
+    const items = await this.service.searchUsersForAdmin(q)
+    return c.json(ok(items))
+  }
+
   async updateRole(c: Context) {
     const id = c.req.param("id")!
     const body = c.req.valid("json" as never) as any

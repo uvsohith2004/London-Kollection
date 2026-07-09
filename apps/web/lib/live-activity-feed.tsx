@@ -3,7 +3,7 @@
 import type { ElementType } from "react"
 import { Eye, ShoppingCart, CreditCard, Heart, Search, XCircle, Star } from "lucide-react"
 import { cn } from "@workspace/ui/lib/utils"
-import { formatCurrency, formatRelativeTime } from "@/lib/format"
+import { useFormatCurrency, formatRelativeTime } from "@/lib/format"
 import type { AuditEvent, AuditEventType } from "@/types/overview-types"
 
 export interface LiveActivityFeedProps {
@@ -23,7 +23,7 @@ const TYPE_ICON: Record<AuditEventType, ElementType> = {
   review: Star,
 }
 
-function describeEvent(event: AuditEvent): string {
+function describeEvent(event: AuditEvent, formatCurrency: (val: number) => string): string {
   switch (event.type) {
     case "view":
       return `viewed ${event.productName ?? "a product"}`
@@ -50,6 +50,7 @@ function describeEvent(event: AuditEvent): string {
  */
 export function LiveActivityFeed({ events, className, limit }: LiveActivityFeedProps) {
   const visible = limit ? events.slice(0, limit) : events
+  const formatCurrency = useFormatCurrency()
 
   return (
     <div className={cn("flex flex-col", className)}>
@@ -72,7 +73,7 @@ export function LiveActivityFeed({ events, className, limit }: LiveActivityFeedP
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm text-foreground">
                   <span className="font-semibold">{event.customerLabel}</span>{" "}
-                  <span className="text-muted-foreground">{describeEvent(event)}</span>
+                  <span className="text-muted-foreground">{describeEvent(event, formatCurrency)}</span>
                 </p>
                 {event.region && (
                   <p className="text-[11px] text-muted-foreground/70">{event.region}</p>

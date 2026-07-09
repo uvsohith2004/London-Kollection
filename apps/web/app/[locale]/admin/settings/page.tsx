@@ -27,18 +27,9 @@ import {
 } from "@workspace/ui/components/popover"
 import { useSettingsQuery } from "../queries"
 import { useUpdateSettingsMutation, useUploadMediaMutation } from "../mutations"
+import { useSettings } from "@/components/providers/settings-provider"
 
-// Expanded schema
 const profileFormSchema = z.object({
-  siteName: z
-    .string()
-    .min(2, { message: "Brand name must be at least 2 characters." })
-    .max(30),
-  brandTagline: z.string().max(60).optional().nullable(),
-  siteDescription: z.string().max(160).optional().nullable(),
-  supportEmail: z
-    .string()
-    .email({ message: "Please enter a valid email address." }),
   defaultCurrency: z.string().min(1, { message: "Please select a currency." }),
   orderPrefix: z.string().max(5).optional().nullable(),
   logoUrl: z.any().optional(), // Light background logo
@@ -73,13 +64,11 @@ export default function SettingsProfilePage() {
   const [logoPreview, setLogoPreview] = React.useState<string | null>(null)
   const [logoDarkPreview, setLogoDarkPreview] = React.useState<string | null>(null)
 
+  const { setSettings } = useSettings()
+
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
-      siteName: "",
-      brandTagline: "",
-      siteDescription: "",
-      supportEmail: "",
       defaultCurrency: "GBP",
       orderPrefix: "",
       logoUrl: "",
@@ -91,23 +80,23 @@ export default function SettingsProfilePage() {
   React.useEffect(() => {
     if (settingsData?.data) {
       form.reset({
-        siteName: settingsData.data.siteName || "",
-        brandTagline: settingsData.data.brandTagline || "",
-        siteDescription: settingsData.data.siteDescription || "",
-        supportEmail: settingsData.data.supportEmail || "",
         defaultCurrency: settingsData.data.defaultCurrency || "GBP",
         orderPrefix: settingsData.data.orderPrefix || "",
         logoUrl: settingsData.data.logoUrl || "",
         logoDarkUrl: settingsData.data.logoDarkUrl || "",
       })
 
-      if (settingsData.data.logoUrl?.url) {
+      if (settingsData.data.logoUrl?.avif?.url) {
+        setLogoPreview(settingsData.data.logoUrl.avif.url)
+      } else if (settingsData.data.logoUrl?.url) {
         setLogoPreview(settingsData.data.logoUrl.url)
       } else if (typeof settingsData.data.logoUrl === "string") {
         setLogoPreview(settingsData.data.logoUrl)
       }
 
-      if (settingsData.data.logoDarkUrl?.url) {
+      if (settingsData.data.logoDarkUrl?.avif?.url) {
+        setLogoDarkPreview(settingsData.data.logoDarkUrl.avif.url)
+      } else if (settingsData.data.logoDarkUrl?.url) {
         setLogoDarkPreview(settingsData.data.logoDarkUrl.url)
       } else if (typeof settingsData.data.logoDarkUrl === "string") {
         setLogoDarkPreview(settingsData.data.logoDarkUrl)
@@ -130,7 +119,7 @@ export default function SettingsProfilePage() {
 
       const res = await uploadMedia({ file, preset: "logo" })
 
-      if (res?.data?.url || res?.data?.key) {
+      if (res?.data?.url || res?.data?.key || res?.data?.avif) {
         if (isDark) {
           form.setValue("logoDarkUrl", res.data)
         } else {
@@ -151,6 +140,11 @@ export default function SettingsProfilePage() {
     setIsPending(true)
     try {
       await updateSettings(data)
+      setSettings({
+        ...data,
+        orderPrefix: data.orderPrefix || "",
+      })
+      toast.success("Settings updated successfully")
     } finally {
       setIsPending(false)
     }
@@ -267,57 +261,6 @@ export default function SettingsProfilePage() {
               </div>
             </div>
           </div>
-
-          <div className="grid gap-8 md:grid-cols-2">
-            <div className="space-y-2.5">
-              <Label
-                htmlFor="siteName"
-                className="text-xs font-medium text-muted-foreground"
-              >
-                Brand Name
-              </Label>
-              <Input
-                id="siteName"
-                {...form.register("siteName")}
-                className={softInputClass}
-              />
-              {form.formState.errors.siteName && (
-                <p className="text-xs text-destructive">
-                  {form.formState.errors.siteName.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2.5">
-              <Label
-                htmlFor="brandTagline"
-                className="text-xs font-medium text-muted-foreground"
-              >
-                Tagline
-              </Label>
-              <Input
-                id="brandTagline"
-                placeholder="The New Standard"
-                {...form.register("brandTagline")}
-                className={softInputClass}
-              />
-            </div>
-          </div>
-
-          <div className="mt-8 space-y-2.5">
-            <Label
-              htmlFor="siteDescription"
-              className="text-xs font-medium text-muted-foreground"
-            >
-              Brand Synopsis (SEO)
-            </Label>
-            <Textarea
-              id="siteDescription"
-              placeholder="Brief description of the collection..."
-              className={cn(softInputClass, "min-h-[120px] resize-none py-4")}
-              {...form.register("siteDescription")}
-            />
-          </div>
         </div>
 
         {/* STORE OPERATIONS CARD */}
@@ -328,22 +271,7 @@ export default function SettingsProfilePage() {
             </h3>
           </div>
 
-          <div className="grid gap-8 md:grid-cols-2">
-            <div className="space-y-2.5">
-              <Label
-                htmlFor="supportEmail"
-                className="text-xs font-medium text-muted-foreground"
-              >
-                Support Email
-              </Label>
-              <Input
-                id="supportEmail"
-                type="email"
-                {...form.register("supportEmail")}
-                className={softInputClass}
-              />
-            </div>
-
+          <div className="grid gap-8">
             <div className="grid grid-cols-2 gap-6">
               {/* SHADCN COMBOBOX FOR CURRENCY */}
               <div className="space-y-2.5">

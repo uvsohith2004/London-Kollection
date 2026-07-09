@@ -3,7 +3,7 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts"
 import { ArrowUpRight, ArrowDownRight } from "lucide-react"
 import { cn } from "@workspace/ui/lib/utils"
-import { formatCurrency } from "@/lib/format"
+import { useFormatCurrency } from "@/lib/format"
 import type { RegionPerformance } from "../../../../types/overview-types"
 
 export interface TerritorialPerformanceProps {
@@ -15,6 +15,7 @@ export interface TerritorialPerformanceProps {
 }
 
 export function TerritorialPerformance({ data, height = 280, showGrowthList = false, className }: TerritorialPerformanceProps) {
+  const formatCurrency = useFormatCurrency()
   return (
     <div className={cn("w-full", showGrowthList && "grid gap-6 lg:grid-cols-[1fr_220px]", className)}>
       <div className="w-full" style={{ height }}>

@@ -13,6 +13,7 @@ import { OptimizedImage } from "@/components/optimized-image"
 import { ImageMagnifier } from "@/components/image-magnifier"
 import { ShareModal } from "@/components/share-modal"
 import { useWishlistStore } from "@/store/wishlist-store"
+import { Price } from "@/components/price"
 
 // --- Helper Component for Collapsible Sections ---
 function AccordionSection({ 
@@ -207,13 +208,9 @@ export function DesktopProduct({ product, variantId }: { product: any, variantId
               {product.title}
             </h1>
             <div className="flex items-baseline gap-4">
-              <span className="text-3xl font-medium">
-                {Number(currentPrice).toFixed(2)} KWD
-              </span>
+              <Price amount={currentPrice} className="text-3xl font-medium" />
               {compareAtPrice && (
-                <span className="text-xl text-muted-foreground line-through">
-                  {Number(compareAtPrice).toFixed(2)} KWD
-                </span>
+                <Price amount={compareAtPrice} className="text-xl text-muted-foreground line-through" />
               )}
             </div>
           </div>

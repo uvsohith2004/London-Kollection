@@ -16,8 +16,8 @@ export function Logo({ className, isMobile }: LogoProps) {
     queryFn: getStoreSettings,
   });
 
-  const logoUrl = settings?.logoUrl?.url || settings?.logoUrl;
-  const logoDarkUrl = settings?.logoDarkUrl?.url || settings?.logoDarkUrl;
+  const logoUrl = settings?.logoUrl?.avif?.url || settings?.logoUrl?.url || settings?.logoUrl;
+  const logoDarkUrl = settings?.logoDarkUrl?.avif?.url || settings?.logoDarkUrl?.url || settings?.logoDarkUrl;
   const siteName = settings?.siteName || "LK";
   
   // If we have both logos, we use CSS to toggle between them instantly based on the 'dark' class

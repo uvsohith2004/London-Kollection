@@ -192,10 +192,8 @@ app.route("/api/featured", featuredRouter)
 app.get("/api/store/settings", async (c) => {
   const { SettingsService } = await import("@/modules/administration/management/settings.service")
   const service = new SettingsService()
-  const logoUrl = await service.getSetting("logoUrl")
-  const logoDarkUrl = await service.getSetting("logoDarkUrl")
-  const siteName = await service.getSetting("siteName")
-  return c.json(ok({ logoUrl, logoDarkUrl, siteName }))
+  const settings = await service.getSettings()
+  return c.json(ok({ logoUrl: settings?.logoUrl, logoDarkUrl: settings?.logoDarkUrl, siteName: settings?.siteName }))
 })
 
 const adminRouter = new Hono<{

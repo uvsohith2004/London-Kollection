@@ -23,7 +23,7 @@ import { ProductInsightsPanel } from "./product-insights-panel"
 import { LiveActivityFeed } from "@/lib/live-activity-feed"
 import { DetailSheet } from "./detail-sheet"
 import { InsightDetailSheet } from "./insight-detail-sheet"
-import { formatCurrency } from "@/lib/format"
+import { useFormatCurrency } from "@/lib/format"
 import type {
   DashboardDetailKey,
   ProductInsight,
@@ -35,6 +35,7 @@ import type {
  * states everywhere. Pairs with OverviewPageMobile for the small-screen layout.
  */
 export default function OverviewPageDesktop() {
+  const formatCurrency = useFormatCurrency()
   const { data, isLoading, isError } = useDashboardQuery()
   const { mutate: exportReport, isPending: isExporting } =
     useExportReportMutation()

@@ -3,17 +3,14 @@ import Link from "next/link";
 import { Button } from "@workspace/ui/components/button";
 import { X, ArrowRight, Heart } from "lucide-react";
 import { toast } from "sonner";
-import { useRemoveFromWishlistMutation } from "../services/mutations";
+import { useWishlistStore } from "@/store/wishlist-store";
 
 export default function DesktopWishlistLayout({ items }: { items: any[] }) {
-  const removeMutation = useRemoveFromWishlistMutation();
+  const removeFromWishlist = useWishlistStore((state) => state.removeFromWishlist);
 
   const handleRemove = (id: string, name: string) => {
-    removeMutation.mutate(id, {
-      onSuccess: () => {
-        toast.success(`${name} removed from wishlist`);
-      }
-    });
+    removeFromWishlist(id);
+    toast.success(`${name} removed from wishlist`);
   };
 
   if (items.length === 0) {
@@ -43,7 +40,7 @@ export default function DesktopWishlistLayout({ items }: { items: any[] }) {
             {item.image ? (
               <Image
                 src={item.image}
-                alt={item.name}
+                alt={item.productName}
                 fill
                 className="object-cover transition-transform duration-700 ease-in-out group-hover:scale-105"
               />
@@ -53,7 +50,7 @@ export default function DesktopWishlistLayout({ items }: { items: any[] }) {
               </div>
             )}
             <button
-              onClick={() => handleRemove(item.id, item.name)}
+              onClick={() => handleRemove(item.id, item.productName)}
               className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground backdrop-blur-sm transition-all duration-300 hover:bg-foreground hover:text-background opacity-0 group-hover:opacity-100"
             >
               <X className="h-4 w-4" />
@@ -61,9 +58,9 @@ export default function DesktopWishlistLayout({ items }: { items: any[] }) {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Link href={`/products/${item.productId}`} className="hover:underline underline-offset-4">
+            <Link href={item.variantId ? `/products/${item.productSlug}/${item.variantId}` : `/products/${item.productSlug}`} className="hover:underline underline-offset-4">
               <h3 className="font-serif text-lg tracking-tight line-clamp-1 text-foreground">
-                {item.name}
+                {item.productName}
               </h3>
             </Link>
             <span className="text-sm font-medium text-muted-foreground">
@@ -72,7 +69,7 @@ export default function DesktopWishlistLayout({ items }: { items: any[] }) {
           </div>
 
           <Button variant="outline" className="w-full mt-6 rounded-full border-border uppercase tracking-widest text-xs transition-colors hover:bg-foreground hover:text-background">
-            <Link href={`/products/${item.productId}`} className="w-full h-full flex items-center justify-center">
+            <Link href={item.variantId ? `/products/${item.productSlug}/${item.variantId}` : `/products/${item.productSlug}`} className="w-full h-full flex items-center justify-center">
               View Product
             </Link>
           </Button>

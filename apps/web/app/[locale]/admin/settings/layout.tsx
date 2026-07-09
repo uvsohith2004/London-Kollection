@@ -7,10 +7,7 @@ import { cn } from "@workspace/ui/lib/utils"
 
 const sidebarNavItems = [
   { title: "General", href: "/admin/settings" },
-  { title: "Payments", href: "/admin/settings/payments" },
-  { title: "Emails", href: "/admin/settings/emails" },
   { title: "Team & Roles", href: "/admin/settings/team" },
-  { title: "Audit Logs", href: "/admin/settings/audit" },
 ]
 
 interface SettingsLayoutProps {

@@ -12,6 +12,7 @@ import { Loader2, Camera, User, CalendarIcon } from "lucide-react"
 import { PhoneInput } from "@/components/phone-input"
 import { UserAvatar } from "@/components/user-avatar"
 import { Calendar } from "@workspace/ui/components/calendar"
+import { ThemeSelector } from "../components/theme-selector"
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover"
 import { format } from "date-fns"
 import { cn } from "@workspace/ui/lib/utils"
@@ -156,6 +157,11 @@ export default function DesktopProfileLayout({ session, formData, setFormData, h
               </PopoverContent>
             </Popover>
           </div>
+        </div>
+
+        {/* Theme Configuration */}
+        <div className="pt-8 border-t border-border/40">
+          <ThemeSelector />
         </div>
 
         {/* Actions */}

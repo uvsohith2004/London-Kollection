@@ -7,8 +7,14 @@ import {
   ShieldCheck, 
   Mail, 
   Edit3, 
-  Trash2 
+  Trash2,
+  Search,
+  Loader2
 } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import { searchAdminUsers } from "@/lib/api"
+import { useDebounce } from "@/hooks/use-debounce"
+import { Input } from "@workspace/ui/components/input"
 
 import { cn } from "@workspace/ui/lib/utils"
 import { Button } from "@workspace/ui/components/button"
@@ -20,23 +26,27 @@ import {
   DropdownMenuTrigger 
 } from "@workspace/ui/components/dropdown-menu"
 
-// Extended mock data to demonstrate the UI better
-const TEAM_MEMBERS = [
-  { id: "1", name: "Alice Admin", email: "alice@londonkollection.com", role: "admin", status: "active" },
-  { id: "2", name: "Bob Manager", email: "bob@londonkollection.com", role: "manager", status: "active" },
-  { id: "3", name: "Charlie Editor", email: "charlie@londonkollection.com", role: "editor", status: "invited" },
-  { id: "4", name: "Diana Support", email: "diana@londonkollection.com", role: "support", status: "active" },
-]
-
 export default function SettingsTeamPage() {
+  const [search, setSearch] = React.useState("")
+  const debouncedSearch = useDebounce(search, 500)
+
+  const { data: teamMembers = [], isLoading } = useQuery({
+    queryKey: ["admin-users", debouncedSearch],
+    queryFn: async () => {
+      const res = await searchAdminUsers(debouncedSearch)
+      return res?.data || res?.items || (Array.isArray(res) ? res : [])
+    }
+  })
+
   // Helper to generate initials for the avatar
   const getInitials = (name: string) => {
+    if (!name) return "U"
     return name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2)
   }
 
   // Helper for role badge styling
   const getRoleBadge = (role: string) => {
-    switch (role.toLowerCase()) {
+    switch (role?.toLowerCase()) {
       case "admin":
         return "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20"
       case "manager":
@@ -61,17 +71,31 @@ export default function SettingsTeamPage() {
             Manage your internal roster, assign roles, and control platform permissions.
           </p>
         </div>
-        <Button className="h-12 w-full shrink-0 gap-2 rounded-full px-6 text-sm font-medium transition-all hover:scale-[1.02] active:scale-[0.98] sm:w-auto">
-          <UserPlus className="h-4 w-4" />
-          Invite Member
-        </Button>
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search team members..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 h-10 w-full rounded-full border-border/40"
+            />
+            {isLoading && (
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+            )}
+          </div>
+          <Button className="h-10 shrink-0 gap-2 rounded-full px-6 text-sm font-medium transition-all hover:scale-[1.02] active:scale-[0.98]">
+            <UserPlus className="h-4 w-4" />
+            Invite Member
+          </Button>
+        </div>
       </div>
 
       {/* MOBILE VIEW (< 768px)
         Stack of tactile cards. Tables do not belong on mobile.
       */}
       <div className="grid gap-4 md:hidden">
-        {TEAM_MEMBERS.map((user) => (
+        {teamMembers.map((user: any) => (
           <div 
             key={user.id} 
             className="flex flex-col rounded-2xl border border-border/40 bg-card p-5 shadow-sm transition-all active:scale-[0.98]"
@@ -132,7 +156,7 @@ export default function SettingsTeamPage() {
 
         {/* List Body */}
         <div className="divide-y divide-border/40">
-          {TEAM_MEMBERS.map((user) => (
+          {teamMembers.map((user: any) => (
             <div 
               key={user.id} 
               className="grid grid-cols-12 items-center px-6 py-4 transition-colors hover:bg-muted/20"

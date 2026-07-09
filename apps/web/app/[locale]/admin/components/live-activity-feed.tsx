@@ -1,9 +1,17 @@
 "use client"
 
 import type { ElementType } from "react"
-import { Eye, ShoppingCart, CreditCard, Heart, Search, XCircle, Star } from "lucide-react"
+import {
+  Eye,
+  ShoppingCart,
+  CreditCard,
+  Heart,
+  Search,
+  XCircle,
+  Star,
+} from "lucide-react"
 import { cn } from "@workspace/ui/lib/utils"
-import { formatCurrency, formatRelativeTime } from "@/lib/format"
+import { useFormatCurrency, formatRelativeTime } from "@/lib/format"
 import type { AuditEvent, AuditEventType } from "@/types/overview-types"
 
 export interface LiveActivityFeedProps {
@@ -23,7 +31,7 @@ const TYPE_ICON: Record<AuditEventType, ElementType> = {
   review: Star,
 }
 
-function describeEvent(event: AuditEvent): string {
+function describeEvent(event: AuditEvent, formatCurrency: (amount: number) => string): string {
   switch (event.type) {
     case "view":
       return `viewed ${event.productName ?? "a product"}`
@@ -48,7 +56,12 @@ function describeEvent(event: AuditEvent): string {
  * Real-time audit trail of storefront behavior — what's being viewed, searched,
  * carted, and bought right now, so drops or spikes upstream can be traced to a cause.
  */
-export function LiveActivityFeed({ events, className, limit }: LiveActivityFeedProps) {
+export function LiveActivityFeed({
+  events,
+  className,
+  limit,
+}: LiveActivityFeedProps) {
+  const formatCurrency = useFormatCurrency()
   const visible = limit ? events.slice(0, limit) : events
 
   return (
@@ -58,7 +71,9 @@ export function LiveActivityFeed({ events, className, limit }: LiveActivityFeedP
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
         </span>
-        <span className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase">Live</span>
+        <span className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase">
+          Live
+        </span>
       </div>
 
       <div className="flex flex-col divide-y divide-border/40">
@@ -72,10 +87,14 @@ export function LiveActivityFeed({ events, className, limit }: LiveActivityFeedP
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm text-foreground">
                   <span className="font-semibold">{event.customerLabel}</span>{" "}
-                  <span className="text-muted-foreground">{describeEvent(event)}</span>
+                  <span className="text-muted-foreground">
+                    {describeEvent(event, formatCurrency)}
+                  </span>
                 </p>
                 {event.region && (
-                  <p className="text-[11px] text-muted-foreground/70">{event.region}</p>
+                  <p className="text-[11px] text-muted-foreground/70">
+                    {event.region}
+                  </p>
                 )}
               </div>
               <span className="shrink-0 text-[11px] font-medium text-muted-foreground">
@@ -86,7 +105,9 @@ export function LiveActivityFeed({ events, className, limit }: LiveActivityFeedP
         })}
 
         {visible.length === 0 && (
-          <p className="py-8 text-center text-xs text-muted-foreground">No activity captured yet.</p>
+          <p className="py-8 text-center text-xs text-muted-foreground">
+            No activity captured yet.
+          </p>
         )}
       </div>
     </div>
