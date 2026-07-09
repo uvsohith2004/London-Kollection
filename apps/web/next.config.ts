@@ -22,10 +22,13 @@ const nextConfig: NextConfig = {
     ],
   },
   async rewrites() {
+    const apiUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+    const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+    
     return [
       {
         source: "/api/:path*",
-        destination: "http://localhost:4000/api/:path*",
+        destination: `${baseUrl}/:path*`,
       },
     ]
   },
