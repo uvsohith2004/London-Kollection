@@ -7,7 +7,6 @@ import { authClient } from "@/lib/auth-client"
 import { mergeCartApi } from "@/lib/api"
 import { useQueryClient } from "@tanstack/react-query"
 import { Loader2 } from "lucide-react"
-import { useCartStore } from "@/store/cart-store"
 
 export default function AuthCallbackPage() {
   const router = useRouter()
@@ -17,7 +16,6 @@ export default function AuthCallbackPage() {
   const pendingAction = useAuthStore((state) => state.pendingAction)
   const uiState = useAuthStore((state) => state.uiState)
   const clearPreAuthState = useAuthStore((state) => state.clearPreAuthState)
-  const cartClear = useCartStore((state) => state.clearCart)
 
   const [status, setStatus] = useState("Validating session...")
   const [error, setError] = useState<string | null>(null)
@@ -68,9 +66,10 @@ export default function AuthCallbackPage() {
         // 2. Synchronize Data (Cart & Wishlist)
         setStatus("Synchronizing your data...")
         try {
-          const localItems = useCartStore.getState().items;
+          const localCart: any = queryClient.getQueryData(["cart"]);
+          const localItems = localCart?.items || [];
           if (localItems && localItems.length > 0) {
-            await mergeCartApi(localItems.map(item => ({
+            await mergeCartApi(localItems.map((item: any) => ({
               productId: item.productId,
               variantId: item.variantId,
               quantity: item.quantity
@@ -95,8 +94,8 @@ export default function AuthCallbackPage() {
         setStatus("Preparing your account...")
         await queryClient.invalidateQueries()
         
-        // Clear local client-side cart so it refetches the server cart freshly
-        cartClear()
+        // Clear guest cart ID
+        localStorage.removeItem("guest-cart-id");
 
         // 5. Fire Analytics
         const w = typeof window !== "undefined" ? window as any : null;
@@ -136,7 +135,7 @@ export default function AuthCallbackPage() {
     return () => {
       mounted = false
     }
-  }, [router, redirectUrl, pendingAction, uiState, clearPreAuthState, queryClient, cartClear])
+  }, [router, redirectUrl, pendingAction, uiState, clearPreAuthState, queryClient])
 
   if (error) {
     return (

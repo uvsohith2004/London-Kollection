@@ -35,7 +35,7 @@ export default function MobileOrdersLayout({ orders }: { orders: any[] }) {
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1">
-                  <span className="font-medium text-foreground">${Number(order.totalAmount).toFixed(2)}</span>
+                  <span className="font-medium text-foreground">{Number(order.totalAmount).toFixed(2)} KWD</span>
                   <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
                     {t(`status${(order.status || 'Processing').charAt(0).toUpperCase() + (order.status || 'Processing').slice(1).toLowerCase()}`)}
                   </span>

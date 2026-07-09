@@ -12,4 +12,14 @@ export class CheckoutController {
 
     return c.json(ok({ order: pendingOrder, }))
   }
+
+  async preview(c: Context) {
+    const user = c.get("user")
+    // Use user.id if logged in, otherwise "guest" or handle guest logic
+    const userId = user?.id || "guest"
+    const body = c.req.valid("json" as never) as any
+    const summary = await this.checkoutService.previewOrder(userId, body)
+
+    return c.json(ok(summary))
+  }
 }

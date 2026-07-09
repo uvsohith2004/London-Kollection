@@ -73,53 +73,35 @@ export default function MobileAddressForm({
 
       <div className="grid grid-cols-[1fr_1.5fr] gap-4">
         <Field className="space-y-1.5">
-          <FieldLabel className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t("block")}</FieldLabel>
+          <FieldLabel className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Block</FieldLabel>
           <Input {...form.register('block')} className="h-14 bg-secondary/40 border-border/40 rounded-2xl text-center text-base transition-colors ltr:text-left rtl:text-right" />
           <FieldError errors={[form.formState.errors.block]} />
         </Field>
         <Field className="space-y-1.5">
-          <FieldLabel className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t("street")}</FieldLabel>
-          <Input {...form.register('street')} className="h-14 bg-secondary/40 border-border/40 rounded-2xl text-base px-4 transition-colors ltr:text-left rtl:text-right" />
-          <FieldError errors={[form.formState.errors.street]} />
-        </Field>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <Field className="space-y-1.5">
-          <FieldLabel className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t("avenue")} <span className="opacity-70 normal-case tracking-normal">{t("opt")}</span></FieldLabel>
-          <Input {...form.register('avenue')} className="h-14 bg-secondary/40 border-border/40 rounded-2xl text-base px-4 transition-colors ltr:text-left rtl:text-right" />
-          <FieldError errors={[form.formState.errors.avenue]} />
-        </Field>
-        <Field className="space-y-1.5">
-          <FieldLabel className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t("building")}</FieldLabel>
+          <FieldLabel className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Building/House</FieldLabel>
           <Input {...form.register('building')} className="h-14 bg-secondary/40 border-border/40 rounded-2xl text-base px-4 transition-colors ltr:text-left rtl:text-right" />
           <FieldError errors={[form.formState.errors.building]} />
         </Field>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <Field className="space-y-1.5">
+        <FieldLabel className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Street</FieldLabel>
+        <Input {...form.register('street')} className="h-14 bg-secondary/40 border-border/40 rounded-2xl text-base px-4 transition-colors ltr:text-left rtl:text-right" />
+        <FieldError errors={[form.formState.errors.street]} />
+      </Field>
+
+      <div className="grid grid-cols-2 gap-4">
         <Field className="space-y-1.5">
-          <FieldLabel className="text-xs font-medium uppercase tracking-wider text-muted-foreground text-center block w-full">{t("floor")} <span className="opacity-70 normal-case tracking-normal">{t("opt")}</span></FieldLabel>
-          <Input {...form.register('floor')} className="h-14 bg-secondary/40 border-border/40 rounded-2xl text-center text-base transition-colors ltr:text-left rtl:text-right" />
-          <FieldError errors={[form.formState.errors.floor]} />
+          <FieldLabel className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Floor/Flat <span className="opacity-70 normal-case tracking-normal">(Optional)</span></FieldLabel>
+          <Input {...form.register('floorFlat')} className="h-14 bg-secondary/40 border-border/40 rounded-2xl text-base px-4 transition-colors ltr:text-left rtl:text-right" />
+          <FieldError errors={[form.formState.errors.floorFlat]} />
         </Field>
         <Field className="space-y-1.5">
-          <FieldLabel className="text-xs font-medium uppercase tracking-wider text-muted-foreground text-center block w-full">{t("flat")} <span className="opacity-70 normal-case tracking-normal">{t("opt")}</span></FieldLabel>
-          <Input {...form.register('flat')} className="h-14 bg-secondary/40 border-border/40 rounded-2xl text-center text-base transition-colors ltr:text-left rtl:text-right" />
-          <FieldError errors={[form.formState.errors.flat]} />
-        </Field>
-        <Field className="space-y-1.5">
-          <FieldLabel className="text-xs font-medium uppercase tracking-wider text-muted-foreground text-center block w-full">{t("paci")} <span className="opacity-70 normal-case tracking-normal">{t("opt")}</span></FieldLabel>
-          <Input {...form.register('paci')} className="h-14 bg-secondary/40 border-border/40 rounded-2xl text-center text-base transition-colors ltr:text-left rtl:text-right" />
-          <FieldError errors={[form.formState.errors.paci]} />
+          <FieldLabel className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Landmark <span className="opacity-70 normal-case tracking-normal">(Optional)</span></FieldLabel>
+          <Input {...form.register('landmark')} className="h-14 bg-secondary/40 border-border/40 rounded-2xl text-base px-4 transition-colors ltr:text-left rtl:text-right" />
+          <FieldError errors={[form.formState.errors.landmark]} />
         </Field>
       </div>
-
-      <Field className="space-y-1.5">
-        <FieldLabel className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t("extraDirections")} <span className="opacity-70 normal-case tracking-normal">{t("opt")}</span></FieldLabel>
-        <Input {...form.register('directions')} className="h-14 bg-secondary/40 border-border/40 rounded-2xl text-base px-4 transition-colors ltr:text-left rtl:text-right" />
-        <FieldError errors={[form.formState.errors.directions]} />
-      </Field>
 
       <Controller
         control={form.control}

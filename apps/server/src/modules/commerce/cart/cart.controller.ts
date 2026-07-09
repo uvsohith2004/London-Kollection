@@ -10,7 +10,9 @@ export class CartController {
     const user = c.get("user")
     const guestCartId = c.req.header("x-guest-cart-id")
     const data = await this.service.getOrCreateCart(user?.id, guestCartId)
-    return c.json(ok({ cart: data }))
+    if (!data) throw new NotFoundError("Cart not found")
+    const summary = await this.service.calculateCartSummary(data.id)
+    return c.json(ok({ cart: summary }))
   }
 
   async addItem(c: Context) {
@@ -22,8 +24,9 @@ export class CartController {
     if (!activeCart) {
       throw new NotFoundError("Cart not found")
     }
-    const item = await this.service.addItemToCart(activeCart.id, body.productId, body.quantity, body.variantId)
-    return c.json(ok(item))
+    await this.service.addItemToCart(activeCart.id, body.productId, body.quantity, body.variantId)
+    const summary = await this.service.calculateCartSummary(activeCart.id)
+    return c.json(ok({ cart: summary }))
   }
 
   async updateItem(c: Context) {
@@ -36,8 +39,9 @@ export class CartController {
     if (!activeCart) {
       throw new NotFoundError("Cart not found")
     }
-    const item = await this.service.updateCartItem(activeCart.id, itemId, body.quantity)
-    return c.json(ok(item))
+    await this.service.updateCartItem(activeCart.id, itemId, body.quantity)
+    const summary = await this.service.calculateCartSummary(activeCart.id)
+    return c.json(ok({ cart: summary }))
   }
 
   async removeItem(c: Context) {
@@ -49,8 +53,9 @@ export class CartController {
     if (!activeCart) {
       throw new NotFoundError("Cart not found")
     }
-    const item = await this.service.removeItemFromCart(activeCart.id, itemId)
-    return c.json(ok(item))
+    await this.service.removeItemFromCart(activeCart.id, itemId)
+    const summary = await this.service.calculateCartSummary(activeCart.id)
+    return c.json(ok({ cart: summary }))
   }
 
   async applyCoupon(c: Context) {
@@ -62,8 +67,9 @@ export class CartController {
     if (!activeCart) {
       throw new NotFoundError("Cart not found")
     }
-    const updated = await this.service.applyCoupon(activeCart.id, body.couponCode)
-    return c.json(ok({ cart: updated }))
+    await this.service.applyCoupon(activeCart.id, body.couponCode)
+    const summary = await this.service.calculateCartSummary(activeCart.id)
+    return c.json(ok({ cart: summary }))
   }
 
   async updateGiftNote(c: Context) {
@@ -75,8 +81,9 @@ export class CartController {
     if (!activeCart) {
       throw new NotFoundError("Cart not found")
     }
-    const updated = await this.service.updateGiftNote(activeCart.id, body.giftNote)
-    return c.json(ok({ cart: updated }))
+    await this.service.updateGiftNote(activeCart.id, body.giftNote)
+    const summary = await this.service.calculateCartSummary(activeCart.id)
+    return c.json(ok({ cart: summary }))
   }
 
   async merge(c: Context) {
@@ -84,7 +91,8 @@ export class CartController {
     const body = await c.req.json().catch(() => ({ items: [] }));
     const items = body.items || [];
     const mergedCart = await this.service.mergeCarts(user.id, items)
-    return c.json(ok({ cart: mergedCart }))
+    const summary = await this.service.calculateCartSummary(mergedCart!.id)
+    return c.json(ok({ cart: summary }))
   }
 
   async sync(c: Context) {
@@ -92,7 +100,10 @@ export class CartController {
     const guestCartId = c.req.header("x-guest-cart-id")
     const body = c.req.valid("json" as never) as any
 
-    const syncedCart = await this.service.syncCart(user?.id, guestCartId, body.items)
-    return c.json(ok({ cart: syncedCart }))
+    await this.service.syncCart(user?.id, guestCartId, body.items)
+    // syncCart already returns calculateCartSummary actually, but let's just make it return normally
+    const activeCart = await this.service.getOrCreateCart(user?.id, guestCartId)
+    const summary = await this.service.calculateCartSummary(activeCart!.id)
+    return c.json(ok({ cart: summary }))
   }
 }

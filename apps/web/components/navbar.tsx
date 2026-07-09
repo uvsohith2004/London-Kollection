@@ -6,21 +6,20 @@ import { usePathname } from "next/navigation";
 import { Search as SearchIcon, ShoppingBag, User, Heart, Home, Grid } from "lucide-react";
 import { Search } from "./search";
 import { cn } from "@workspace/ui/lib/utils";
-import { useCartStore } from "@/store/cart-store";
-import { useCartSync } from "@/hooks/use-cart-sync";
+import { useCartQuery } from "@/app/[locale]/cart/queries";
 import { authClient } from "@/lib/auth-client";
 import { UserAvatar } from "@/components/user-avatar";
+import { Logo } from "@/components/logo";
 
 export function Navbar() {
   const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
   
-  const totalItems = useCartStore((state) => state.getTotalItems());
-  const { data: sessionData } = authClient.useSession();
+  const { data: cartSummary } = useCartQuery();
+  const totalItems = cartSummary?.items?.reduce((acc, item) => acc + item.quantity, 0) || 0;
   
-  // Sync local cart to backend when items change
-  useCartSync();
+  const { data: sessionData } = authClient.useSession();
 
   useEffect(() => {
     setMounted(true);
@@ -53,12 +52,7 @@ export function Navbar() {
           <div className="flex items-center justify-between gap-4 md:gap-8">
             
             {/* Logo */}
-            <Link 
-              href="/" 
-            className="shrink-0 font-heading text-2xl md:text-3xl font-bold tracking-[0.15em] uppercase text-foreground"
-            >
-              LK.
-            </Link>
+            <Logo />
 
             {/* Desktop Search Area (Large) */}
             <div className="hidden md:flex flex-1 max-w-2xl relative group">

@@ -122,15 +122,15 @@ export function HomeFlashSale() {
               className="w-full"
             >
               <CarouselContent className="-ml-4 md:-ml-6">
-                {products?.map((product:Product) => (
+                {products?.map((product:Product, index: number) => (
                   <CarouselItem
                     key={product.id}
                     className="basis-[85vw] pl-4 sm:basis-[45vw] md:basis-[33vw] md:pl-6 lg:basis-[25vw]"
                   >
                     {isMobile ? (
-                      <PremiumMobileProductCard product={product} />
+                      <PremiumMobileProductCard product={product} priority={index < 2} />
                     ) : (
-                      <PremiumProductCard product={product} />
+                      <PremiumProductCard product={product} priority={index < 2} />
                     )}
                   </CarouselItem>
                 ))}

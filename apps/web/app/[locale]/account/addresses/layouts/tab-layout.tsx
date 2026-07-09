@@ -10,7 +10,7 @@ export default function TabAddressesLayout({
 }: any) {
   const t = useTranslations("Addresses")
   return (
-    <div className="max-w-2xl pb-12">
+    <div className="max-w-2xl bg-background min-h-screen text-foreground pb-20">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-serif tracking-tight mb-1 text-foreground">{t("title")}</h1>
@@ -56,7 +56,7 @@ export default function TabAddressesLayout({
               addr.default ? "border-primary bg-primary/5" : "border-border bg-card"
             )}>
               {addr.default && (
-                <div className="absolute top-0 right-0 bg-primary text-primary-foreground px-3 py-1 rounded-bl-lg text-[9px] font-bold uppercase tracking-wider flex items-center shadow-sm">
+                <div className="absolute top-0 right-0 bg-foreground text-background px-3 py-1 rounded-bl-lg text-[9px] font-bold uppercase tracking-wider flex items-center shadow-sm">
                   <ShieldCheck className="w-3 h-3 mr-1" /> {t("defaultBadge")}
                 </div>
               )}
@@ -75,10 +75,24 @@ export default function TabAddressesLayout({
               </div>
 
               <div className="text-muted-foreground text-sm space-y-1 mb-5">
-                <p className="text-foreground font-medium">{addr.addressLine1}</p>
-                {addr.addressLine2 && <p>{addr.addressLine2}</p>}
-                <p>{addr.city}, {addr.state} {addr.postalCode !== "00000" && addr.postalCode}</p>
+                {(() => {
+                  let parsed;
+                  try {
+                    parsed = JSON.parse(addr.addressLine1);
+                  } catch {
+                    parsed = { block: addr.addressLine1, street: "", building: "", floorFlat: "" };
+                  }
+                  const lines = [
+                    parsed.block && `Block ${parsed.block}`,
+                    parsed.street && `Street ${parsed.street}`,
+                    parsed.building && `Building ${parsed.building}`,
+                    parsed.floorFlat && `Floor/Flat ${parsed.floorFlat}`
+                  ].filter(Boolean).join(", ");
+                  return <p className="text-foreground font-medium text-base">{lines}</p>;
+                })()}
+                <p>{addr.city}, {addr.state}</p>
                 <p>{addr.country}</p>
+                {addr.landmark && <p className="italic text-xs mt-3 opacity-80 before:content-['•'] ltr:before:mr-2 rtl:before:ml-2">Landmark: {addr.landmark}</p>}
               </div>
 
               <div className="flex items-center gap-2 pt-4 border-t border-border/50">

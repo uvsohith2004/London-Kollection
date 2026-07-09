@@ -12,6 +12,7 @@ const controller = new OrdersController()
 ordersRouter.use("*", requireAuth)
 ordersRouter.get("/", (c) => controller.getUserOrders(c))
 ordersRouter.get("/:id", (c) => controller.getOrderDetails(c))
+ordersRouter.post("/:id/cancel", (c) => controller.cancelOrder(c))
 
 // Admin Routes
 adminOrdersRouter.use("*", requireRole("admin"))

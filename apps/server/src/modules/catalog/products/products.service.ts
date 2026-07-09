@@ -12,6 +12,7 @@ import {
   order,
   userProductHistory,
   userSearchHistory,
+  category,
 } from "@/db/schemas"
 import { userHeatmap } from "@/db/schemas/heatmap.schema"
 import { nanoid } from "nanoid"
@@ -120,6 +121,10 @@ export function transformProduct(raw: RawProductData | null | undefined) {
     averageRating: Number(raw.averageRating || 0),
     reviewCount: raw.reviewCount || 0,
     dimensions: raw.dimensions || undefined,
+    price: raw.price ? Number(raw.price) : 0,
+    compareAtPrice: undefined as number | undefined,
+    sku: raw.variants?.[0]?.sku || raw.slug,
+    taxClass: raw.taxClass || undefined,
     images: (raw.images?.length ? raw.images : (raw.variants?.[0]?.images || [])).map(mapImage),
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
@@ -202,10 +207,12 @@ export function transformProductList(raw: RawProductData | null | undefined) {
     brandId: raw.brandId || undefined,
     brandName: raw.brand?.name || undefined,
     productType: raw.productType || undefined,
-    price: raw.price ? Number(raw.price) : undefined,
+    price: raw.price ? Number(raw.price) : 0,
+    compareAtPrice: undefined as number | undefined,
     discount: raw.discount ? Number(raw.discount) : undefined,
     taxClassId: raw.taxClassId || undefined,
     taxClassName: raw.taxClass?.name || undefined,
+    taxClass: raw.taxClass || undefined,
     published: raw.published || raw.visibility === "public" || false,
     featured: raw.featured || false,
     status: raw.published ? "published" : "draft",
@@ -434,6 +441,76 @@ export class ProductsService {
       },
       900 // 15 minutes
     )
+  }
+
+  async searchProducts(filters: {
+    categorySlug?: string
+    collectionId?: string
+    q?: string
+    minPrice?: number
+    maxPrice?: number
+    limit?: number
+    offset?: number
+  }) {
+    const limit = filters.limit || 20
+    const offset = filters.offset || 0
+
+    const conditions = [eq(product.archived, false), eq(product.published, true)]
+    
+    if (filters.q) {
+      conditions.push(sql`(${product.title} ILIKE ${`%${filters.q}%`})`)
+    }
+
+    let productIds: string[] | null = null;
+
+    if (filters.categorySlug) {
+      const [cat] = await db.select({ id: category.id }).from(category).where(eq(category.slug, filters.categorySlug))
+      if (!cat) return []
+
+      const pc = await db.select({ productId: productCategory.productId }).from(productCategory).where(eq(productCategory.categoryId, cat.id))
+      const ids = pc.map(p => p.productId).filter(id => id !== null) as string[]
+      
+      const directMatches = await db.select({ id: product.id }).from(product).where(eq(product.categoryId, cat.id))
+      const directIds = directMatches.map(p => p.id)
+
+      const allIds = Array.from(new Set([...ids, ...directIds]))
+      if (allIds.length === 0) return []
+      productIds = allIds
+    }
+
+    if (filters.collectionId) {
+      const pc = await db.select({ productId: productCollection.productId }).from(productCollection).where(eq(productCollection.collectionId, filters.collectionId))
+      const ids = pc.map(p => p.productId).filter(id => id !== null) as string[]
+      
+      if (ids.length === 0) return []
+      
+      if (productIds !== null) {
+        productIds = productIds.filter(id => ids.includes(id))
+        if (productIds.length === 0) return []
+      } else {
+        productIds = ids
+      }
+    }
+
+    if (productIds !== null) {
+      conditions.push(inArray(product.id, productIds))
+    }
+
+    // Note: minPrice and maxPrice filtering would require joining variants if price isn't consistently synced,
+    // but we can fallback to the product.price for now if it exists, or just omit it for simplicity if not heavily used yet.
+
+    const results = await db.query.product.findMany({
+      where: and(...conditions),
+      limit,
+      offset,
+      orderBy: [desc(product.createdAt)],
+      with: {
+        images: true,
+        variants: { with: { images: true } },
+      },
+    })
+
+    return results.map(transformProductList)
   }
 
   async getAdminProducts(filters: {

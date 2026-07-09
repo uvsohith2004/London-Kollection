@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { OptimizedImage } from "@/components/optimized-image";
 import { Product } from "../queries";
-import { useCartStore } from "@/store/cart-store";
 import { Button } from "@workspace/ui/components/button";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
@@ -179,10 +178,10 @@ export function MobileProduct({ product, variantId }: { product: Product, varian
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-serif tracking-tight leading-tight">{product.title}</h1>
           <div className="flex items-center gap-3">
-            <span className="text-xl font-medium">${Number(currentPrice).toFixed(2)}</span>
+            <span className="text-xl font-medium">{Number(currentPrice).toFixed(2)} KWD</span>
             {Number(product.discount) > 0 && !activeVariant?.price && (
               <span className="text-sm text-muted-foreground line-through">
-                ${Number(product.price).toFixed(2)}
+                {Number(product.price).toFixed(2)} KWD
               </span>
             )}
           </div>

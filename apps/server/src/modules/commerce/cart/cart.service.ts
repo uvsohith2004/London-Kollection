@@ -1,7 +1,9 @@
 import { NotFoundError, BadRequestError } from "@/core/errors"
 import db from "@/db"
 import { cart, cartItem, product, productVariant, coupon } from "@/db/schemas"
-import { eq, and, sql } from "drizzle-orm"
+import { eq, and, sql, inArray } from "drizzle-orm"
+import { ProductsService } from "../../catalog/products/products.service"
+import { pricingEngine } from "../../catalog/pricing/pricing.service"
 
 export class CartService {
   async getOrCreateCart(userId?: string, guestCartId?: string) {
@@ -285,6 +287,117 @@ export class CartService {
       await tx.update(cart).set({ updatedAt: new Date() }).where(eq(cart.id, activeCart.id))
     })
 
-    return this.getCartDetails(activeCart.id)
+    return this.calculateCartSummary(activeCart.id)
+  }
+
+  async calculateCartSummary(cartId: string) {
+    const activeCart = await this.getCartDetails(cartId)
+    if (!activeCart) return null
+
+    const productsService = new ProductsService()
+
+    let subtotal = 0
+    let discountTotal = 0
+    let taxTotal = 0
+    const deliveryFee = 0 // Placeholder for future integration
+
+    const hydratedItems = await Promise.all(activeCart.items.map(async (item) => {
+      // 1. Fetch live product data
+      let liveProduct = await productsService.getProductById(item.productId)
+      
+      // 2. Apply Global Flash Sale Pricing
+      if (liveProduct) {
+        liveProduct = await pricingEngine.applyGlobalPricingSingle(liveProduct)
+      }
+
+      if (!liveProduct) {
+        // Product no longer exists or isn't published
+        return {
+          ...item,
+          productName: "Unavailable Product",
+          productSlug: "",
+          sku: "",
+          quantity: item.quantity,
+          unitPrice: 0,
+          discountValue: 0,
+          subtotal: 0,
+          isAvailable: false,
+          optionValues: {},
+        }
+      }
+
+      // 3. Resolve Variant or Base Product
+      let variantData = null
+      let optionValues = {}
+      let sku = liveProduct.sku || ""
+      
+      if (item.variantId) {
+        variantData = liveProduct.variants?.find(v => v.id === item.variantId)
+        if (variantData) {
+          optionValues = variantData.optionValues || {}
+          sku = variantData.sku || sku
+        }
+      }
+
+      // 4. Resolve Pricing
+      const unitPrice = variantData ? variantData.price : liveProduct.price
+      const compareAtPrice = variantData ? variantData.compareAtPrice : liveProduct.compareAtPrice
+      const itemSubtotal = unitPrice * item.quantity
+
+      // 5. Check Availability (Stock)
+      const stock = variantData ? variantData.stock : liveProduct.variants?.[0]?.stock || 0
+      const isAvailable = stock >= item.quantity
+
+      // 6. Tax Calculation
+      // If the product has a taxClass, we calculate it. 
+      // (Assuming taxClass has a rate property, e.g. 0.05 for 5%)
+      let itemTax = 0
+      if (liveProduct.taxClass?.rate) {
+        itemTax = itemSubtotal * Number(liveProduct.taxClass.rate)
+      }
+
+      subtotal += itemSubtotal
+      taxTotal += itemTax
+      
+      // We don't separately add to discountTotal right now since the unitPrice is the final price.
+      // But if we want to show total savings:
+      if (compareAtPrice && compareAtPrice > unitPrice) {
+        discountTotal += (compareAtPrice - unitPrice) * item.quantity
+      }
+
+      // 7. Resolve Image
+      let image = variantData?.images?.[0]?.url || liveProduct.images?.[0]?.url
+
+      return {
+        id: item.id,
+        productId: item.productId,
+        variantId: item.variantId,
+        productName: liveProduct.title,
+        productSlug: liveProduct.slug,
+        sku,
+        image,
+        optionValues,
+        quantity: item.quantity,
+        unitPrice,
+        compareAtPrice,
+        discountValue: compareAtPrice ? compareAtPrice - unitPrice : 0,
+        subtotal: itemSubtotal,
+        isAvailable,
+        stock,
+      }
+    }))
+
+    const grandTotal = subtotal + taxTotal + deliveryFee
+
+    return {
+      id: activeCart.id,
+      items: hydratedItems,
+      subtotal,
+      taxTotal,
+      discountTotal,
+      deliveryFee,
+      grandTotal,
+      couponCode: activeCart.couponCode,
+    }
   }
 }

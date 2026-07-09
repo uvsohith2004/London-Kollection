@@ -28,7 +28,7 @@ export default function MobileOrderDetailLayout({ order }: { order: any }) {
               <h2 className="font-serif text-xl tracking-tight text-foreground">{order.orderNumber}</h2>
             </div>
             <div className="flex flex-col items-end">
-              <span className="text-xl font-medium text-foreground">${Number(order.totalAmount).toFixed(2)}</span>
+              <span className="text-xl font-medium text-foreground">{Number(order.totalAmount).toFixed(2)} KWD</span>
               <p className="text-xs text-muted-foreground mt-0.5">{t('totalAmount')}</p>
             </div>
           </div>
@@ -63,7 +63,7 @@ export default function MobileOrderDetailLayout({ order }: { order: any }) {
                 <div className="flex-1 ltr:ml-0 rtl:mr-0">
                   <h3 className="font-medium text-foreground text-sm line-clamp-1 mb-1">{item.productId}</h3>
                   <p className="text-sm text-muted-foreground mb-1" dir={locale === 'ar' ? 'rtl' : 'ltr'}>{t('qty')}{item.quantity}</p>
-                  <p className="font-medium text-foreground text-sm">${Number(item.price).toFixed(2)}</p>
+                  <p className="font-medium text-foreground text-sm">{Number(item.priceAtPurchase || item.price || 0).toFixed(2)} KWD</p>
                 </div>
               </div>
             ))}
@@ -71,7 +71,20 @@ export default function MobileOrderDetailLayout({ order }: { order: any }) {
         </div>
 
         {/* Support Card */}
-        <div className="bg-secondary/30 p-5 rounded-2xl border border-border mt-6">
+        <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100 mt-6">
+          <h3 className="font-semibold text-sm mb-1 text-blue-900">Immediate Assistance</h3>
+          <p className="text-xs text-blue-700 mb-4">Contact us directly for order verification or support:</p>
+          <div className="flex flex-col gap-2">
+            <a href="tel:97973479" className="w-full text-sm font-medium text-blue-800 bg-white border border-blue-200 h-12 rounded-xl flex items-center justify-center hover:bg-blue-50 transition-colors shadow-sm">
+              📞 97973479
+            </a>
+            <a href="tel:51759962" className="w-full text-sm font-medium text-blue-800 bg-white border border-blue-200 h-12 rounded-xl flex items-center justify-center hover:bg-blue-50 transition-colors shadow-sm">
+              📞 51759962
+            </a>
+          </div>
+        </div>
+
+        <div className="bg-secondary/30 p-5 rounded-2xl border border-border mt-4">
           <h3 className="font-medium text-sm mb-3 text-foreground">{t('orderAssistance')}</h3>
           <div className="space-y-2">
             <Button variant="outline" className="w-full justify-start bg-card border-border h-12 rounded-xl text-foreground font-medium" >

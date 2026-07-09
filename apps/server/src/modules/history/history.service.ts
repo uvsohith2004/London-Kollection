@@ -114,7 +114,7 @@ export class HistoryService {
       });
     }
     
-    const categoryIds = [...new Set(userViews.map(v => v.product?.categoryId).filter(Boolean))];
+    const categoryIds = [...new Set(userViews.map(v => v.product?.categoryId).filter((id): id is string => Boolean(id)))];
     
     if (!categoryIds.length) {
        return await db.query.product.findMany({

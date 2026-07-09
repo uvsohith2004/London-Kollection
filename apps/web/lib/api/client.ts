@@ -1,6 +1,13 @@
 import axios from "axios"
 
-const baseURL = process.env.NEXT_PUBLIC_SITE_URL ? `${process.env.NEXT_PUBLIC_SITE_URL}/api` : "/api"
+const isServer = typeof window === "undefined";
+
+let baseURL = "/api";
+if (isServer) {
+  baseURL = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+} else {
+  baseURL = process.env.NEXT_PUBLIC_SITE_URL ? `${process.env.NEXT_PUBLIC_SITE_URL}/api` : "/api";
+}
 
 export const apiClient = axios.create({
   baseURL,
@@ -13,7 +20,12 @@ export const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   (config) => {
-    console.log(config.baseURL, config.url)
+    if (typeof window !== "undefined") {
+      const guestCartId = localStorage.getItem("guest-cart-id");
+      if (guestCartId) {
+        config.headers["x-guest-cart-id"] = guestCartId;
+      }
+    }
     return config
   },
   (error) => {

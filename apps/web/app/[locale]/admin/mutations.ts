@@ -371,7 +371,7 @@ export function useUpdateOrderStatusMutation() {
       data,
     }: {
       id: string
-      data: { status: string; description?: string }
+      data: { status?: string; paymentStatus?: string; description?: string }
     }) => updateAdminOrderStatus(id, data),
     onSuccess: () => {
       toast.success("Order status updated")

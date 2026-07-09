@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react"
 import { OptimizedImage } from "@/components/optimized-image"
 import { Product } from "../queries"
-import { useCartStore } from "@/store/cart-store"
 import { Button } from "@workspace/ui/components/button"
 import { toast } from "sonner"
 import { cn } from "@workspace/ui/lib/utils"
@@ -129,11 +128,11 @@ export function TabProduct({ product, variantId }: { product: Product, variantId
             </h1>
             <div className="flex items-center gap-3 mb-8">
               <span className="text-xl font-medium">
-                ${Number(currentPrice).toFixed(2)}
+                {Number(currentPrice).toFixed(2)} KWD
               </span>
               {Number(product.discount) > 0 && !activeVariant?.price && (
                 <span className="text-muted-foreground line-through">
-                  ${Number(product.price).toFixed(2)}
+                  {Number(product.price).toFixed(2)} KWD
                 </span>
               )}
             </div>

@@ -42,6 +42,7 @@ export const taxRule = pgTable(
   "tax_rule",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    name: text("name").notNull(),
     taxClassId: uuid("tax_class_id")
       .notNull()
       .references(() => taxClass.id, { onDelete: "cascade" }),

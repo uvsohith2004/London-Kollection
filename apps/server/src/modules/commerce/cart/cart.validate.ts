@@ -1,8 +1,8 @@
 import { z } from "zod"
 
 export const AddCartItemSchema = z.object({
-  productId: z.string().uuid("Invalid product ID format"),
-  variantId: z.string().uuid("Invalid variant ID format").nullable().optional(),
+  productId: z.string().min(1, "Product ID is required"),
+  variantId: z.string().nullable().optional(),
   quantity: z.number().int().positive("Quantity must be a positive integer"),
 })
 
@@ -20,8 +20,8 @@ export const UpdateGiftNoteSchema = z.object({
 
 export const SyncCartSchema = z.object({
   items: z.array(z.object({
-    productId: z.string().uuid("Invalid product ID format"),
-    variantId: z.string().uuid("Invalid variant ID format").nullable().optional(),
+    productId: z.string().min(1, "Product ID is required"),
+    variantId: z.string().nullable().optional(),
     quantity: z.number().int().positive("Quantity must be positive"),
   }))
 })

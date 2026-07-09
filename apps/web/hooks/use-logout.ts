@@ -1,13 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
 import { authClient } from "@/lib/auth-client"
-import { useCartStore } from "@/store/cart-store"
+
 import { useAuthStore } from "@/store/auth-store"
 
 export function useLogout() {
   const queryClient = useQueryClient()
   const router = useRouter()
-  const clearCart = useCartStore((state) => state.clearCart)
   const clearPreAuthState = useAuthStore((state) => state.clearPreAuthState)
 
   const logout = async () => {
@@ -23,9 +22,9 @@ export function useLogout() {
     // 2. Clear React Query Cache completely (User cache, Checkout state, Coupons, etc.)
     queryClient.clear()
 
-    // 3. Clear Zustand Persisted Stores (Cart cache, Auth cache)
-    clearCart()
+    // 3. Clear auth state and guest cart
     clearPreAuthState()
+    localStorage.removeItem("guest-cart-id")
     
     // (Future: Wishlist cache clearing)
 

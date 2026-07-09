@@ -1,11 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { createAddress, updateAddress, deleteAddress, setDefaultAddress } from "@/lib/api";
 
 export const useCreateAddressMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: any) => {
-      return await api.post("/addresses", data);
+      return await createAddress(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["addresses"] });
@@ -17,7 +17,7 @@ export const useUpdateAddressMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, data }: { id: string, data: any }) => {
-      return await api.put(`/addresses/${id}`, data);
+      return await updateAddress(id, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["addresses"] });
@@ -29,7 +29,7 @@ export const useDeleteAddressMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      return await api.delete(`/addresses/${id}`);
+      return await deleteAddress(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["addresses"] });
@@ -41,10 +41,11 @@ export const useSetDefaultAddressMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, type }: { id: string, type: string }) => {
-      return await api.put(`/addresses/${id}`, { default: true, type });
+      return await setDefaultAddress(id, type);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["addresses"] });
     }
   });
 };
+

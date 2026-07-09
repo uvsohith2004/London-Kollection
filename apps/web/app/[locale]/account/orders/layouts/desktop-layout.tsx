@@ -62,7 +62,7 @@ export default function DesktopOrdersLayout({ orders }: { orders: any[] }) {
               <div className="flex items-center gap-12">
                 <div className="text-right">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1 ltr:text-right rtl:text-left">{t('totalAmount')}</p>
-                  <p className="text-xl font-medium text-foreground">${Number(order.totalAmount).toFixed(2)}</p>
+                  <p className="text-xl font-medium text-foreground">{Number(order.totalAmount).toFixed(2)} KWD</p>
                 </div>
                 
                 <Button variant="outline" className="rounded-full group-hover:bg-foreground group-hover:text-background transition-colors border-border">

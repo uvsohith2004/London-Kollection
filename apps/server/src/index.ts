@@ -58,6 +58,7 @@ import {
 } from "@/modules/engagement"
 
 import { mediaRouter } from "@/modules/media"
+import { addressesRouter } from "@/modules/fulfillment/addresses"
 import {
   settingsRouter,
   adminDashboardRouter,
@@ -179,6 +180,7 @@ app.get("/api/customer-reviews", (c) =>
 )
 app.route("/api/returns", returnsRouter)
 app.route("/api/wishlist", wishlistRouter)
+app.route("/api/fulfillment/addresses", addressesRouter)
 app.route("/api/notifications", notificationsRouter)
 app.route("/api/media", mediaRouter)
 app.route("/api/support", helpCenterRouter)
@@ -186,6 +188,15 @@ app.route("/api/chat", chatRouter)
 app.route("/api/history", historyRouter)
 app.route("/api/heatmap", heatmapRouter)
 app.route("/api/featured", featuredRouter)
+
+app.get("/api/store/settings", async (c) => {
+  const { SettingsService } = await import("@/modules/administration/management/settings.service")
+  const service = new SettingsService()
+  const logoUrl = await service.getSetting("logoUrl")
+  const logoDarkUrl = await service.getSetting("logoDarkUrl")
+  const siteName = await service.getSetting("siteName")
+  return c.json(ok({ logoUrl, logoDarkUrl, siteName }))
+})
 
 const adminRouter = new Hono<{
   Variables: {
@@ -229,3 +240,5 @@ serve({
   fetch: app.fetch,
   port,
 })
+
+// force reload

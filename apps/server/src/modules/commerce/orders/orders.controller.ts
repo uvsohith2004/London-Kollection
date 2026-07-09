@@ -25,6 +25,18 @@ export class OrdersController {
     return c.json(ok({ order: item }))
   }
 
+  async cancelOrder(c: Context) {
+    const user = c.get("user")!
+    const id = c.req.param("id")!
+    const body = await c.req.json()
+    const reason = body.reason
+    if (!reason) {
+      return c.json({ error: "Reason is required" }, 400)
+    }
+    const updated = await this.service.cancelOrder(id, reason, user.id)
+    return c.json(ok({ order: updated }))
+  }
+
   async listAdmin(c: Context) {
     const items = await db.query.order.findMany({
       orderBy: desc(order.createdAt),

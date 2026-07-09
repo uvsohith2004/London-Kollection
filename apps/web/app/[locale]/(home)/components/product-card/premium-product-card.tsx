@@ -12,11 +12,13 @@ import { useWishlistStore } from "@/store/wishlist-store"
 interface PremiumProductCardProps {
   product: Product
   className?: string
+  priority?: boolean
 }
 
 export function PremiumProductCard({
   product,
   className,
+  priority = false,
 }: PremiumProductCardProps) {
   const [isImageLoaded, setIsImageLoaded] = useState(false)
 
@@ -91,6 +93,7 @@ export function PremiumProductCard({
                 "group-hover:opacity-0"
               )}
               onLoad={() => setIsImageLoaded(true)}
+              priority={priority}
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
             />
             {secondaryImgObj && (

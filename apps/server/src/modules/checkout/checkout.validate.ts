@@ -5,3 +5,8 @@ export const PrepareOrderSchema = z.object({
   shippingAddressId: z.string().uuid("Invalid shipping address ID"),
   billingAddressId: z.string().uuid("Invalid billing address ID").optional(),
 })
+
+export const PreviewOrderSchema = z.object({
+  cartId: z.string().uuid("Invalid cart ID"),
+  shippingCountryCode: z.string().min(2),
+})

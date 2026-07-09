@@ -98,6 +98,7 @@ export function ImageCarousel({ images }: { images: HeroSlide[] }) {
                   fallbackUrl={image.imageUrl}
                   alt={image.title || `Carousel image ${index + 1}`}
                   fill
+                  priority={index < 2}
                   className="object-cover bg-black select-none"
                   sizes={isDesktop ? "100vw" : "(max-width: 768px) 100vw, 50vw"}
                   style={{

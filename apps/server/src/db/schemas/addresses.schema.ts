@@ -7,7 +7,6 @@ export const address = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     userId: text("user_id")
-      .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     phone: text("phone").notNull(),

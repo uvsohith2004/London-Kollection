@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { OptimizedImage } from "@/components/optimized-image";
 import { Product } from "../queries";
-import { useCartStore } from "@/store/cart-store";
 import { Button } from "@workspace/ui/components/button";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";

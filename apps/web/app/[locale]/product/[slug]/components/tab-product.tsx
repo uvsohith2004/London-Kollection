@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react"
 import { OptimizedImage } from "@/components/optimized-image"
 import { Product } from "../queries"
-import { useCartStore } from "@/store/cart-store"
 import { Button } from "@workspace/ui/components/button"
 import { toast } from "sonner"
 import { cn } from "@workspace/ui/lib/utils"

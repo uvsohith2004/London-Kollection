@@ -26,14 +26,14 @@ export class OccasionsController {
   }
 
   async create(c: Context) {
-    const data = c.req.valid("json" as any)
+    const data = c.req.valid("json" as never) as any
     const item = await this.service.create(data)
     return c.json(ok(item))
   }
 
   async update(c: Context) {
     const id = c.req.param("id")!
-    const data = c.req.valid("json" as any)
+    const data = c.req.valid("json" as never) as any
     const item = await this.service.update(id, data)
     if (!item) {
       throw new NotFoundError("Occasion not found")

@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { useCartStore } from '@/store/cart-store';
+import { useCartQuery } from '@/app/[locale]/cart/queries';
 import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 
 export default function TabLayout() {
   // Similar to desktop but slightly adjusted for tablet screens
-  const { items: cartItems, clearCart } = useCartStore();
+  const { data: cartSummary, isLoading: isCartLoading } = useCartQuery();
+  const cartItems = cartSummary?.items || [];
+  const total = cartSummary?.grandTotal || 0;
+  const subtotal = cartSummary?.subtotal || 0;
   const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -20,7 +23,7 @@ export default function TabLayout() {
         cartId: 'local-cart',
         shippingAddressId: '123e4567-e89b-12d3-a456-426614174000', // Mock UUID
       });
-      clearCart();
+      // queryClient.removeQueries({ queryKey: ['cart'] }) // Handled post-checkout typically
       router.push(`/checkout/success?order=${data?.order?.orderNumber || '0000'}`);
     } catch (error) {
       console.error(error);
@@ -55,15 +58,15 @@ export default function TabLayout() {
               {cartItems?.map((item: any) => (
                 <div key={item.id} className="flex gap-4 bg-white p-4 rounded-2xl border border-gray-100">
                   <div className="w-16 h-16 bg-gray-50 rounded-lg overflow-hidden shrink-0">
-                    <img src={item.imageUrl || 'https://via.placeholder.com/64'} alt={item.title} className="w-full h-full object-cover" />
+                    <img src={item.image || 'https://via.placeholder.com/64'} alt={item.productName} className="w-full h-full object-cover" />
                   </div>
                   <div className="flex-1 flex justify-between items-center">
                     <div>
-                      <h3 className="font-medium text-gray-900">{item.title}</h3>
+                      <h3 className="font-medium text-gray-900">{item.productName}</h3>
                       <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
                     </div>
                     <div className="font-medium">
-                      ${((Number(item.price) || 0) * item.quantity).toFixed(2)}
+                      {Number(item.subtotal).toFixed(2)} KWD
                     </div>
                   </div>
                 </div>
@@ -73,7 +76,7 @@ export default function TabLayout() {
             <div className="mt-8 pt-6 border-t border-gray-200">
                <div className="flex justify-between text-xl font-medium mb-8">
                 <span>Total</span>
-                <span>${cartItems?.reduce((acc: any, item: any) => acc + (Number(item.price) || 0) * item.quantity, 0).toFixed(2) || '0.00'}</span>
+                <span>{total.toFixed(2)} KWD</span>
               </div>
               <button 
                 onClick={handleCheckout}

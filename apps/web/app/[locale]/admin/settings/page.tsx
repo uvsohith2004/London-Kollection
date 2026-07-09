@@ -41,7 +41,8 @@ const profileFormSchema = z.object({
     .email({ message: "Please enter a valid email address." }),
   defaultCurrency: z.string().min(1, { message: "Please select a currency." }),
   orderPrefix: z.string().max(5).optional().nullable(),
-  logoUrl: z.any().optional(), // Can be string or file object/image asset
+  logoUrl: z.any().optional(), // Light background logo
+  logoDarkUrl: z.any().optional(), // Dark background logo
 })
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>
@@ -70,6 +71,7 @@ export default function SettingsProfilePage() {
 
   const [isPending, setIsPending] = React.useState(false)
   const [logoPreview, setLogoPreview] = React.useState<string | null>(null)
+  const [logoDarkPreview, setLogoDarkPreview] = React.useState<string | null>(null)
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -81,6 +83,7 @@ export default function SettingsProfilePage() {
       defaultCurrency: "GBP",
       orderPrefix: "",
       logoUrl: "",
+      logoDarkUrl: "",
     },
   })
 
@@ -95,6 +98,7 @@ export default function SettingsProfilePage() {
         defaultCurrency: settingsData.data.defaultCurrency || "GBP",
         orderPrefix: settingsData.data.orderPrefix || "",
         logoUrl: settingsData.data.logoUrl || "",
+        logoDarkUrl: settingsData.data.logoDarkUrl || "",
       })
 
       if (settingsData.data.logoUrl?.url) {
@@ -102,26 +106,44 @@ export default function SettingsProfilePage() {
       } else if (typeof settingsData.data.logoUrl === "string") {
         setLogoPreview(settingsData.data.logoUrl)
       }
+
+      if (settingsData.data.logoDarkUrl?.url) {
+        setLogoDarkPreview(settingsData.data.logoDarkUrl.url)
+      } else if (typeof settingsData.data.logoDarkUrl === "string") {
+        setLogoDarkPreview(settingsData.data.logoDarkUrl)
+      }
     }
   }, [settingsData, form])
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>, isDark: boolean = false) => {
     const file = e.target.files?.[0]
     if (!file) return
 
     try {
       // Show local preview
       const objectUrl = URL.createObjectURL(file)
-      setLogoPreview(objectUrl)
+      if (isDark) {
+        setLogoDarkPreview(objectUrl)
+      } else {
+        setLogoPreview(objectUrl)
+      }
 
       const res = await uploadMedia({ file, preset: "logo" })
 
       if (res?.data?.url || res?.data?.key) {
-        form.setValue("logoUrl", res.data)
+        if (isDark) {
+          form.setValue("logoDarkUrl", res.data)
+        } else {
+          form.setValue("logoUrl", res.data)
+        }
       }
     } catch (err) {
       toast.error("Logo upload failed")
-      setLogoPreview(null)
+      if (isDark) {
+        setLogoDarkPreview(null)
+      } else {
+        setLogoPreview(null)
+      }
     }
   }
 
@@ -170,39 +192,78 @@ export default function SettingsProfilePage() {
             </h3>
           </div>
 
-          <div className="mb-8">
-            <Label className="mb-2 block text-xs font-medium text-muted-foreground">
-              Brand Logo
-            </Label>
-            <div className="flex items-center gap-6">
-              {logoPreview ? (
-                <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-xl border border-border bg-muted/40">
-                  <img
-                    src={logoPreview}
-                    alt="Logo preview"
-                    className="h-full w-full object-contain p-2"
-                  />
-                </div>
-              ) : (
-                <div className="flex h-24 w-24 items-center justify-center rounded-xl border border-dashed border-border bg-muted/40 text-muted-foreground">
-                  <Globe className="h-8 w-8 opacity-20" />
-                </div>
-              )}
+          <div className="mb-8 grid gap-8 md:grid-cols-2">
+            <div>
+              <Label className="mb-2 block text-xs font-medium text-muted-foreground">
+                Brand Logo (Light Background)
+              </Label>
+              <div className="flex items-center gap-6">
+                {logoPreview ? (
+                  <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-xl border border-border bg-white">
+                    <img
+                      src={logoPreview}
+                      alt="Logo preview"
+                      className="h-full w-full object-contain p-2"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex h-24 w-24 items-center justify-center rounded-xl border border-dashed border-border bg-white text-muted-foreground">
+                    <Globe className="h-8 w-8 opacity-20" />
+                  </div>
+                )}
 
-              <div className="flex flex-col gap-2">
-                <label className="relative inline-flex h-10 w-32 cursor-pointer items-center justify-center rounded-xl border border-input bg-background text-sm font-medium hover:bg-accent hover:text-accent-foreground">
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload Logo
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleLogoUpload}
-                  />
-                </label>
-                <p className="text-xs text-muted-foreground">
-                  Recommended size: 600x300px. Max 2MB.
-                </p>
+                <div className="flex flex-col gap-2">
+                  <label className="relative inline-flex h-10 w-32 cursor-pointer items-center justify-center rounded-xl border border-input bg-background text-sm font-medium hover:bg-accent hover:text-accent-foreground">
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload Logo
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={(e) => handleLogoUpload(e, false)}
+                    />
+                  </label>
+                  <p className="text-[10px] text-muted-foreground leading-tight">
+                    For light interfaces.<br/>Max 2MB.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <Label className="mb-2 block text-xs font-medium text-muted-foreground">
+                Brand Logo (Dark Background)
+              </Label>
+              <div className="flex items-center gap-6">
+                {logoDarkPreview ? (
+                  <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-xl border border-border bg-slate-950">
+                    <img
+                      src={logoDarkPreview}
+                      alt="Logo dark preview"
+                      className="h-full w-full object-contain p-2"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex h-24 w-24 items-center justify-center rounded-xl border border-dashed border-border bg-slate-950 text-muted-foreground">
+                    <Globe className="h-8 w-8 opacity-20" />
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-2">
+                  <label className="relative inline-flex h-10 w-32 cursor-pointer items-center justify-center rounded-xl border border-input bg-background text-sm font-medium hover:bg-accent hover:text-accent-foreground">
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload Logo
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={(e) => handleLogoUpload(e, true)}
+                    />
+                  </label>
+                  <p className="text-[10px] text-muted-foreground leading-tight">
+                    For dark interfaces.<br/>Max 2MB.
+                  </p>
+                </div>
               </div>
             </div>
           </div>

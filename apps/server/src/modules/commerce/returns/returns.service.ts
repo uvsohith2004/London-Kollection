@@ -20,6 +20,10 @@ export class ReturnsService {
         throw new NotFoundError("Order not found or does not belong to user")
       }
 
+      if (targetOrder.status.toLowerCase() !== "delivered") {
+        throw new Error("Returns can only be requested for delivered orders")
+      }
+
       // Check if return request already exists
       const existingRequest = await tx.query.returnRequest.findFirst({
         where: eq(returnRequest.orderId, data.orderId)

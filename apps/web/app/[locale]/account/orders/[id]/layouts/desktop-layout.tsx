@@ -58,7 +58,7 @@ export default function DesktopOrderDetailLayout({ order }: { order: any }) {
                         <h3 className="font-medium text-foreground text-lg mb-1">{item.productId}</h3>
                         <p className="text-sm text-muted-foreground mb-4" dir={locale === 'ar' ? 'rtl' : 'ltr'}>{t('quantity')}{item.quantity}</p>
                       </div>
-                      <p className="font-medium text-foreground">${Number(item.price).toFixed(2)}</p>
+                      <p className="font-medium text-foreground">{Number(item.priceAtPurchase || item.price || 0).toFixed(2)} KWD</p>
                     </div>
                   </div>
                 ))}
@@ -91,7 +91,7 @@ export default function DesktopOrderDetailLayout({ order }: { order: any }) {
             <div className="space-y-4 text-sm">
               <div className="flex justify-between text-muted-foreground">
                 <span>{t('subtotal')}</span>
-                <span>${Number(order.totalAmount).toFixed(2)}</span>
+                <span>{Number(order.totalAmount).toFixed(2)} KWD</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
                 <span>{t('shipping')}</span>
@@ -103,7 +103,7 @@ export default function DesktopOrderDetailLayout({ order }: { order: any }) {
               </div>
               <div className="border-t border-border pt-4 mt-4 flex justify-between font-medium text-lg text-foreground">
                 <span>{t('total')}</span>
-                <span>${Number(order.totalAmount).toFixed(2)}</span>
+                <span>{Number(order.totalAmount).toFixed(2)} KWD</span>
               </div>
             </div>
           </section>
@@ -113,6 +113,18 @@ export default function DesktopOrderDetailLayout({ order }: { order: any }) {
             <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
               {t('needHelpDesc')}
             </p>
+            <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 mb-6">
+              <h3 className="font-semibold text-blue-900 text-sm mb-1">Immediate Assistance</h3>
+              <p className="text-xs text-blue-700 mb-3">Contact us directly for order verification or support:</p>
+              <div className="flex flex-col gap-2">
+                <a href="tel:97973479" className="text-sm font-medium text-blue-800 bg-white border border-blue-200 py-1.5 px-3 rounded-lg flex items-center justify-center hover:bg-blue-50 transition-colors">
+                  📞 97973479
+                </a>
+                <a href="tel:51759962" className="text-sm font-medium text-blue-800 bg-white border border-blue-200 py-1.5 px-3 rounded-lg flex items-center justify-center hover:bg-blue-50 transition-colors">
+                  📞 51759962
+                </a>
+              </div>
+            </div>
             <div className="space-y-3">
               <Button className="w-full bg-foreground text-background hover:bg-foreground/90 font-medium" >
                 <Link href={`/${locale}/account/returns`}>{t('requestReturn')}</Link>

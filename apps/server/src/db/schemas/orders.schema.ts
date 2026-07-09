@@ -24,6 +24,10 @@ export const order = pgTable(
     billingAddress: jsonb("billing_address"),
     giftNote: text("gift_note"),
 
+    cancellationReason: text("cancellation_reason"),
+    cancelledAt: timestamp("cancelled_at"),
+    cancelledBy: text("cancelled_by"),
+
     estimatedDelivery: timestamp("estimated_delivery"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")

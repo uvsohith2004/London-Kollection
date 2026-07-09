@@ -48,8 +48,10 @@ const del = async <T = any>(url: string, config?: any): Promise<T> =>
 export interface SearchParams {
   q?: string
   category?: string
+  collectionId?: string
   minPrice?: number
   maxPrice?: number
+  limit?: number
   sort?: string
 }
 
@@ -152,6 +154,40 @@ export const addToCartApi = async (
 
 export const mergeCartApi = async (items: Array<{productId: string, variantId?: string | null, quantity: number}>) => {
   return await post(`/cart/merge`, { items })
+}
+
+// --- Checkout API ---
+export const fetchCheckoutPreview = async (payload: { cartId: string, shippingCountryCode: string }) => {
+  return await post(`/checkout/preview`, payload)
+}
+
+export const submitCheckout = async (payload: { cartId: string, shippingAddressId: string, billingAddressId?: string }) => {
+  return await post(`/checkout`, payload)
+}
+
+// --- Addresses API ---
+export const fetchAddresses = async () => {
+  return await get(`/fulfillment/addresses`)
+}
+
+export const createAddress = async (payload: any) => {
+  return await post(`/fulfillment/addresses`, payload)
+}
+
+export const updateAddress = async (id: string, payload: any) => {
+  return await put(`/fulfillment/addresses/${id}`, payload)
+}
+
+export const deleteAddress = async (id: string) => {
+  return await del(`/fulfillment/addresses/${id}`)
+}
+
+export const setDefaultAddress = async (id: string, type: string) => {
+  return await put(`/fulfillment/addresses/${id}`, { default: true, type })
+}
+
+export const getStoreSettings = async () => {
+  return await get("/store/settings")
 }
 
 // --- Admin API Endpoints ---
@@ -273,9 +309,13 @@ export const fetchAdminOrders = async (params?: any) => {
 }
 export const updateAdminOrderStatus = async (
   id: string,
-  payload: { status: string; description?: string }
+  payload: { status?: string; paymentStatus?: string; description?: string }
 ) => {
   return await put(`/admin/orders/${id}/status`, payload)
+}
+
+export const cancelOrderApi = async (id: string, payload: { reason: string }) => {
+  return await post(`/orders/${id}/cancel`, payload)
 }
 
 // Returns

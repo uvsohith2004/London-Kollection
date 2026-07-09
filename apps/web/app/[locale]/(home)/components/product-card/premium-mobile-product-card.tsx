@@ -12,11 +12,13 @@ import { useWishlistStore } from "@/store/wishlist-store"
 interface PremiumMobileProductCardProps {
   product: Product
   className?: string
+  priority?: boolean
 }
 
 export function PremiumMobileProductCard({
   product,
   className,
+  priority = false,
 }: PremiumMobileProductCardProps) {
   const [isImageLoaded, setIsImageLoaded] = useState(false)
 
@@ -86,6 +88,7 @@ export function PremiumMobileProductCard({
               isImageLoaded ? "opacity-100" : "opacity-0"
             )}
             onLoad={() => setIsImageLoaded(true)}
+            priority={priority}
             sizes="(max-width: 768px) 75vw, 45vw"
           />
         ) : (

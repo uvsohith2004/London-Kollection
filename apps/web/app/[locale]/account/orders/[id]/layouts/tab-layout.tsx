@@ -30,7 +30,7 @@ export default function TabOrderDetailLayout({ order }: { order: any }) {
         <div className="flex justify-between items-center mb-6">
            <div className="text-right ltr:text-left rtl:text-right">
               <p className="text-xs uppercase tracking-widest text-muted-foreground mb-2">{t('total')}</p>
-              <p className="font-medium text-xl text-foreground">${Number(order.totalAmount).toFixed(2)}</p>
+              <p className="font-medium text-xl text-foreground">{Number(order.totalAmount).toFixed(2)} KWD</p>
            </div>
         </div>
         
@@ -54,9 +54,22 @@ export default function TabOrderDetailLayout({ order }: { order: any }) {
                 <h3 className="font-medium text-foreground mb-1">{item.productId}</h3>
                 <p className="text-sm text-muted-foreground mb-2" dir={locale === 'ar' ? 'rtl' : 'ltr'}>{t('quantity')}{item.quantity}</p>
               </div>
-              <p className="font-medium text-foreground">${Number(item.price).toFixed(2)}</p>
+              <p className="font-medium text-foreground">{Number(item.priceAtPurchase || item.price || 0).toFixed(2)} KWD</p>
             </div>
           ))}
+        </div>
+      </div>
+      
+      <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100 mb-6">
+        <h3 className="font-semibold text-blue-900 mb-2">Immediate Assistance</h3>
+        <p className="text-sm text-blue-700 mb-4">Contact us directly for order verification or support:</p>
+        <div className="grid grid-cols-2 gap-3">
+          <a href="tel:97973479" className="text-sm font-medium text-blue-800 bg-white border border-blue-200 py-2 px-3 rounded-lg flex items-center justify-center hover:bg-blue-50 transition-colors">
+            📞 97973479
+          </a>
+          <a href="tel:51759962" className="text-sm font-medium text-blue-800 bg-white border border-blue-200 py-2 px-3 rounded-lg flex items-center justify-center hover:bg-blue-50 transition-colors">
+            📞 51759962
+          </a>
         </div>
       </div>
       
