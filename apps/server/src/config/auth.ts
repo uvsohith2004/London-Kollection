@@ -9,7 +9,13 @@ export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: "pg" }),
   secret: process.env.BETTER_AUTH_SECRET!,
   baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
-  trustedOrigins: ["http://localhost:3000", "http://localhost:4000"],
+  trustedOrigins: [
+    "http://localhost:3000", 
+    "http://localhost:4000",
+    process.env.WEB_URL || "",
+    "https://www.londonkollection.com",
+    "https://londonkollection.com"
+  ].filter(Boolean),
   account: {
     accountLinking: {
       enabled: true,
