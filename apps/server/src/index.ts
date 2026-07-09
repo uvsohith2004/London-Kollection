@@ -82,7 +82,9 @@ app.use(
     origin: (origin) => {
       const allowedOrigins = [
         "http://localhost:3000",
-        process.env.WEB_URL,
+        "https://www.londonkollection.com",
+        "https://londonkollection.com",
+        process.env.ADMIN_URL,
         process.env.ADMIN_URL,
       ].filter(Boolean) as string[]
 
