@@ -7,6 +7,8 @@ export interface AppSettings {
   orderPrefix: string
   logoUrl?: any
   logoDarkUrl?: any
+  defaultReturnWindow?: number
+  defaultExchangeWindow?: number
 }
 
 interface SettingsContextType {

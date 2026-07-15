@@ -16,8 +16,8 @@ import { useUpdateSettingsMutation } from "../../mutations"
 import { useSettings } from "@/components/providers/settings-provider"
 
 const eligibilitySchema = z.object({
-  defaultReturnWindow: z.number().int().min(0).default(14),
-  defaultExchangeWindow: z.number().int().min(0).default(30),
+  defaultReturnWindow: z.number().int().min(0),
+  defaultExchangeWindow: z.number().int().min(0),
 })
 
 type EligibilityFormValues = z.infer<typeof eligibilitySchema>
@@ -47,10 +47,7 @@ export default function EligibilitySettingsPage() {
   async function onSubmit(data: EligibilityFormValues) {
     try {
       await updateSettings(data)
-      setSettings((prev: any) => ({
-        ...prev,
-        ...data
-      }))
+      setSettings(data)
     } catch (err) {
       console.error(err)
     }

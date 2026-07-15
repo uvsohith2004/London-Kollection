@@ -7,7 +7,7 @@ export default async function CategoryDetailsPage({ params }: { params: Promise<
   const { slug: slugArray } = await params;
   
   // Get the leaf slug (the last segment of the path) for database querying
-  const slug = slugArray[slugArray.length - 1];
+  const slug = slugArray[slugArray.length - 1]!;
   
   const queryClient = new QueryClient();
   const queryParams: SearchQuery = { categoryId: slug, limit: "50" };
