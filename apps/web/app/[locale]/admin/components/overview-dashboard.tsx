@@ -36,21 +36,27 @@ export function OverviewDashboard() {
     )
   }
 
-  if (isError || !data || !data.summary) {
+  // Handle cases where the backend response wasn't flattened by the interceptor
+  const payload = data?.data && data?.success === true ? data.data : data
+
+  if (isError || !payload || !payload.summary) {
     return (
       <div className="flex min-h-[80vh] items-center justify-center">
         <div className="rounded-3xl border border-destructive/20 bg-destructive/5 p-8 text-center text-destructive">
           Failed to load dashboard data.
+          <pre className="text-xs text-left mt-4 max-w-lg overflow-auto">
+            {JSON.stringify({ data, isError }, null, 2)}
+          </pre>
         </div>
       </div>
     )
   }
 
-  const summary = data?.summary
-  const mainAnalytics = data?.mainAnalytics || []
-  const timeOfDayStats = data?.timeOfDayStats || []
-  const categoryStats = data?.categoryStats || []
-  const { operations, paymentVerification, inventory, topProducts, topCustomers, recentOrders } = data
+  const summary = payload.summary
+  const mainAnalytics = payload.mainAnalytics || []
+  const timeOfDayStats = payload.timeOfDayStats || []
+  const categoryStats = payload.categoryStats || []
+  const { operations, paymentVerification, inventory, topProducts, topCustomers, recentOrders } = payload
 
   const getGreeting = () => {
     const hour = new Date().getHours()
