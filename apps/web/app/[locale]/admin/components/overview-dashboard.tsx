@@ -37,7 +37,8 @@ export function OverviewDashboard() {
   }
 
   // Handle cases where the backend response wasn't flattened by the interceptor
-  const payload = data?.data && data?.success === true ? data.data : data
+  const _data = data as any
+  const payload = _data?.data && _data?.success === true ? _data.data : data
 
   if (isError || !payload || !payload.summary) {
     return (
@@ -73,7 +74,7 @@ export function OverviewDashboard() {
         <p className="text-muted-foreground flex flex-wrap gap-x-6 gap-y-2 text-sm mt-2">
           <span>Overall Business Health is <strong className="text-primary font-medium">Strong</strong></span>
           <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-green-500"></span> Systems Operational</span>
-          <span className="text-muted-foreground/70">Synced at {new Date(data.lastUpdatedAt).toLocaleTimeString()}</span>
+          <span className="text-muted-foreground/70">Synced at {new Date(payload.lastUpdatedAt).toLocaleTimeString()}</span>
         </p>
       </div>
 
@@ -143,7 +144,7 @@ export function OverviewDashboard() {
                       paddingAngle={5}
                       dataKey="value"
                     >
-                      {timeOfDayStats.map((entry, index) => (
+                      {timeOfDayStats.map((entry: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={["#0f172a", "#3b82f6", "#10b981", "#f59e0b"][index % 4]} />
                       ))}
                     </Pie>
@@ -166,7 +167,7 @@ export function OverviewDashboard() {
                       paddingAngle={5}
                       dataKey="value"
                     >
-                      {categoryStats.map((entry, index) => (
+                      {categoryStats.map((entry: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={["#8b5cf6", "#ec4899", "#f43f5e", "#14b8a6", "#64748b"][index % 5]} />
                       ))}
                     </Pie>
