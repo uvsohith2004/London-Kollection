@@ -76,6 +76,7 @@ export const useSubmitReview = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["reviews", variables.productId] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
     },
   });
 };
@@ -128,6 +129,7 @@ export const useSubmitReviewDraft = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
     },
   });
 };

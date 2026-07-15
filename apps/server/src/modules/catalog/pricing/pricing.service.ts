@@ -45,18 +45,28 @@ export class PricingEngineService {
       if (flashPrice === undefined) return product;
 
       // Apply flash sale to all variants
-      const updatedVariants = product.variants?.map((v: any) => ({
-        ...v,
-        price: flashPrice,
-        discountValue: 0,
-        compareAtPrice: v.compareAtPrice || (v.discountValue ? Number(v.price) + Number(v.discountValue) : v.price) || product.price,
-      }));
+      const updatedVariants = product.variants?.map((v: any) => {
+        const originalBasePrice = Number(v.price)
+        const originalDiscount = Number(v.discountValue || 0)
+        const currentOriginalPrice = v.compareAtPrice || originalBasePrice
+        
+        return {
+          ...v,
+          price: flashPrice,
+          discountValue: currentOriginalPrice - Number(flashPrice),
+          compareAtPrice: currentOriginalPrice,
+        }
+      });
+
+      const pBasePrice = Number(product.price)
+      const pDiscount = Number((product as any).discountValue || 0)
+      const pCurrentOriginalPrice = product.compareAtPrice || pBasePrice
 
       return {
         ...product,
         price: flashPrice,
-        discountValue: 0,
-        compareAtPrice: product.compareAtPrice || ((product as any).discountValue ? Number(product.price) + Number((product as any).discountValue) : product.price),
+        discountValue: pCurrentOriginalPrice - Number(flashPrice),
+        compareAtPrice: pCurrentOriginalPrice,
         variants: updatedVariants,
       };
     }) as any;
