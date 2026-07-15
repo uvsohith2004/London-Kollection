@@ -239,5 +239,6 @@ logger.info(`🚀 Hono running on port ${port}`)
 serve({
   fetch: app.fetch,
   port,
+  hostname: "0.0.0.0"
 })
 
