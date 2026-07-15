@@ -32,7 +32,7 @@ import {
   createTaxRule,
   updateTaxRule,
   deleteTaxRule,
-} from "@/api"
+} from "@/api-client"
 import { adminKeys } from "./queries"
 import { apiClient } from "@/api-client/client"
 
@@ -499,7 +499,7 @@ export function useUpdateSettingsMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: any) => {
-      const { updateSettings } = await import("@/api")
+      const { updateSettings } = await import("@/api-client")
       return updateSettings(payload)
     },
     onSuccess: () => {
@@ -538,7 +538,7 @@ export function useCreateHeroCarouselMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: any) => {
-      const { createHeroCarousel } = await import("@/api")
+      const { createHeroCarousel } = await import("@/api-client")
       return createHeroCarousel(payload)
     },
     onSuccess: () => {
@@ -554,7 +554,7 @@ export function useUpdateHeroCarouselMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const { updateHeroCarousel } = await import("@/api")
+      const { updateHeroCarousel } = await import("@/api-client")
       return updateHeroCarousel(id, data)
     },
     onSuccess: () => {
@@ -570,7 +570,7 @@ export function useDeleteHeroCarouselMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
-      const { deleteHeroCarousel } = await import("@/api")
+      const { deleteHeroCarousel } = await import("@/api-client")
       return deleteHeroCarousel(id)
     },
     onSuccess: () => {
@@ -586,7 +586,7 @@ export function useReorderHeroCarouselMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: any) => {
-      const { reorderHeroCarousel } = await import("@/api")
+      const { reorderHeroCarousel } = await import("@/api-client")
       return reorderHeroCarousel(payload)
     },
     onSuccess: () => {
@@ -602,7 +602,7 @@ export function useToggleFlashSaleMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: { isActive: boolean; endTime?: string }) => {
-      const { toggleFlashSale } = await import("@/api")
+      const { toggleFlashSale } = await import("@/api-client")
       return toggleFlashSale(payload)
     },
     onSuccess: () => {
@@ -618,7 +618,7 @@ export function useCreateFlashSaleProductMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: any) => {
-      const { createFlashSaleProduct } = await import("@/api")
+      const { createFlashSaleProduct } = await import("@/api-client")
       return createFlashSaleProduct(payload)
     },
     onSuccess: () => {
@@ -634,7 +634,7 @@ export function useUpdateFlashSaleProductMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const { updateFlashSaleProduct } = await import("@/api")
+      const { updateFlashSaleProduct } = await import("@/api-client")
       return updateFlashSaleProduct(id, data)
     },
     onSuccess: () => {
@@ -650,7 +650,7 @@ export function useDeleteFlashSaleProductMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
-      const { deleteFlashSaleProduct } = await import("@/api")
+      const { deleteFlashSaleProduct } = await import("@/api-client")
       return deleteFlashSaleProduct(id)
     },
     onSuccess: () => {
@@ -667,7 +667,7 @@ export function useSetFeaturedPiecesMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: any) => {
-      const { setFeaturedPieces } = await import("@/api")
+      const { setFeaturedPieces } = await import("@/api-client")
       return setFeaturedPieces(payload)
     },
     onSuccess: () => {
@@ -683,7 +683,7 @@ export function useUpdateFeaturedPieceStatusMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const { updateFeaturedPieceStatus } = await import("@/api")
+      const { updateFeaturedPieceStatus } = await import("@/api-client")
       return updateFeaturedPieceStatus(id, data)
     },
     onSuccess: () => {
@@ -698,7 +698,7 @@ export function useSetFeaturedCollectionsMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: any) => {
-      const { setFeaturedCollections } = await import("@/api")
+      const { setFeaturedCollections } = await import("@/api-client")
       return setFeaturedCollections(payload)
     },
     onSuccess: () => {
@@ -714,7 +714,7 @@ export function useUpdateFeaturedCollectionStatusMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const { updateFeaturedCollectionStatus } = await import("@/api")
+      const { updateFeaturedCollectionStatus } = await import("@/api-client")
       return updateFeaturedCollectionStatus(id, data)
     },
     onSuccess: () => {

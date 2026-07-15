@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@work
 import { Package } from "lucide-react"
 
 import { ProductFormValues } from "../use-product-form"
-import { fetchProductBySlug } from "@/api"
+import { fetchProductBySlug } from "@/api-client"
 
 // ==========================================
 // REUSABLE COMPONENT: SlugInput

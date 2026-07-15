@@ -13,7 +13,7 @@ import {
 } from "lucide-react"
 import { inviteAdmin } from "./action"
 import { useDebounce } from "@/hooks/use-debounce"
-import { searchAdminUsers } from "@/api"
+import { searchAdminUsers } from "@/api-client"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { authClient } from "@/lib/auth-client"

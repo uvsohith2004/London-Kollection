@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useCartQuery } from '@/app/[locale]/cart/queries';
-import { fetchCheckoutPreview, submitCheckout } from '@/api';
+import { fetchCheckoutPreview, submitCheckout } from '@/api-client';
 import { useRouter } from 'next/navigation';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';

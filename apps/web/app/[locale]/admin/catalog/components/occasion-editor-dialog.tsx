@@ -18,7 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@work
 import { StickySaveBar } from "@workspace/ui/components/sticky-save-bar"
 import { SEOFormSection } from "../../components/seo-form-section"
 import { useCreateOccasionMutation, useUpdateOccasionMutation } from "../../mutations"
-import { fetchOccasionBySlug } from "@/api"
+import { fetchOccasionBySlug } from "@/api-client"
 import { SlugInput } from "./category-editor-dialog"
 import { MediaUploader } from "@/components/media-uploader"
 

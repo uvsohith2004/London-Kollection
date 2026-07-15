@@ -22,7 +22,7 @@ import {
   useUpdateCollectionMutation,
 
 } from "../../mutations"
-import { fetchCollectionBySlug } from "@/api"
+import { fetchCollectionBySlug } from "@/api-client"
 import { SlugInput } from "./category-editor-dialog"
 
 const collectionSchema = z.object({

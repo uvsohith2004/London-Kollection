@@ -18,7 +18,7 @@ import {
   CreditCard,
 } from "lucide-react"
 import { format } from "date-fns"
-import { cancelOrderApi, api } from "@/api"
+import { cancelOrderApi, api } from "@/api-client"
 import { toast } from "sonner"
 import { OptimizedImage } from "@/components/optimized-image"
 import { formatAddressLine } from "@/lib/format-address"

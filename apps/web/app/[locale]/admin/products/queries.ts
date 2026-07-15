@@ -66,7 +66,7 @@ export function useAdminBrandsQuery(params?: any) {
   return useQuery({
     queryKey: [...adminCatalogKeys.brands, params],
     queryFn: async () => {
-      const { fetchAdminBrands } = await import("@/api")
+      const { fetchAdminBrands } = await import("@/api-client")
       return fetchAdminBrands(params)
     },
   })
@@ -76,7 +76,7 @@ export function useTaxClassesQuery(params?: any) {
   return useQuery({
     queryKey: [...adminCatalogKeys.taxClasses, params],
     queryFn: async () => {
-      const { fetchTaxClasses } = await import("@/api")
+      const { fetchTaxClasses } = await import("@/api-client")
       return fetchTaxClasses(params)
     },
   })

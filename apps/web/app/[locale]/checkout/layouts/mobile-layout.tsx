@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useCartQuery } from '@/app/[locale]/cart/queries';
-import { api } from '@/api';
+import { api } from '@/api-client';
 import { useRouter } from 'next/navigation';
 import { Price } from '@/components/price';
 

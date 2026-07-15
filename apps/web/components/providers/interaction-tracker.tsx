@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useInteractionStore } from '@/stores/use-interaction-store'
-import { api } from '@/api'
+import { api } from '@/api-client'
 
 export function InteractionTracker() {
   useEffect(() => {

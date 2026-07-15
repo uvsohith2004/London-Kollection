@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { ProductCard } from "@/components/product-card"
-import { fetchSearchProducts } from "@/api"
+import { fetchSearchProducts } from "@/api-client"
 import { ArrowRight } from "lucide-react"
 import { OptimizedImage } from "@/components/optimized-image"
 

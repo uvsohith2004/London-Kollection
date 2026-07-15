@@ -1,7 +1,7 @@
 "use client";
 import { useState } from 'react';
 import { Package, Download } from 'lucide-react';
-import { cancelOrderApi, api } from '@/api';
+import { cancelOrderApi, api } from '@/api-client';
 import { toast } from 'sonner';
 
 interface OrderActionButtonsProps {

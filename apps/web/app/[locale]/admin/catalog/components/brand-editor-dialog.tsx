@@ -21,7 +21,7 @@ import {
   useCreateBrandMutation,
   useUpdateBrandMutation,
 } from "../../mutations"
-import { fetchBrandBySlug } from "@/api"
+import { fetchBrandBySlug } from "@/api-client"
 import { SlugInput } from "./category-editor-dialog"
 
 const brandSchema = z.object({

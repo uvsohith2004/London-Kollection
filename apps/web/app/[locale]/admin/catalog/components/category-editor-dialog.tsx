@@ -43,7 +43,7 @@ import {
   useUpdateCategoryMutation,
 } from "../../mutations"
 import { useAdminCategoriesQuery } from "../../queries"
-import { fetchCategoryBySlug } from "@/api"
+import { fetchCategoryBySlug } from "@/api-client"
 
 // ==========================================
 // REUSABLE COMPONENT: SlugInput

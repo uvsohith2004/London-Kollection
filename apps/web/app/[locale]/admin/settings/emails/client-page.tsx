@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
-import { api } from "@/api"
+import { api } from "@/api-client"
 import { Save, RefreshCw, Send, AlertTriangle, CheckCircle, XCircle } from "lucide-react"
 import { StickySaveBar } from "@workspace/ui/components/sticky-save-bar"
 

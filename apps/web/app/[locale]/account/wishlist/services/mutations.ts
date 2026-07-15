@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api";
+import { api } from "@/api-client";
 
 export const useRemoveFromWishlistMutation = () => {
   const queryClient = useQueryClient();

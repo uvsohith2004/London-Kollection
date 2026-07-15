@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchAddresses } from "@/api";
+import { fetchAddresses } from "@/api-client";
 
 export const useAddressesQuery = (initialData?: any[]) => {
   return useQuery({

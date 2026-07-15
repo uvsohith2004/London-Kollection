@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuthStore } from "@/store/auth-store"
 import { authClient } from "@/lib/auth-client"
-import { mergeCartApi } from "@/api"
+import { mergeCartApi } from "@/api-client"
 import { useQueryClient } from "@tanstack/react-query"
 import { Loader2 } from "lucide-react"
 
