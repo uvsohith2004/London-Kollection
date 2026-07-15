@@ -38,7 +38,14 @@ export function OverviewDashboard() {
 
   // Handle cases where the backend response wasn't flattened by the interceptor
   const _data = data as any
-  const payload = _data?.data && _data?.success === true ? _data.data : data
+  let payload = _data
+  if (_data?.summary) {
+    payload = _data
+  } else if (_data?.data?.summary) {
+    payload = _data.data
+  } else if (_data?.data?.data?.summary) {
+    payload = _data.data.data
+  }
 
   if (isError || !payload || !payload.summary) {
     return (
