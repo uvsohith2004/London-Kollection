@@ -10,6 +10,8 @@ export default defineConfig({
 
   bundle: true,
 
+  noExternal: ["@workspace/api-contracts"],
+
   splitting: false,
 
   sourcemap: false,
