@@ -75,11 +75,11 @@ export function OverviewDashboard() {
     <div className="mx-auto w-full max-w-[1600px] space-y-8 pb-24 font-sans px-4 sm:px-6 lg:px-8 pt-8">
       {/* SECTION 1: Greeting & Summary */}
       <div className="flex flex-col gap-2 border-b border-border/40 pb-6 mb-8">
-        <h1 className="text-3xl font-medium  font-serif tracking-tight text-foreground">{getGreeting()}</h1>
+        <h1 className="text-3xl font-medium font-serif tracking-tight text-foreground" suppressHydrationWarning>{getGreeting()}</h1>
         <p className="text-muted-foreground flex flex-wrap gap-x-6 gap-y-2 text-sm mt-2">
           <span>Overall Business Health is <strong className="text-primary font-medium">Strong</strong></span>
           <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-green-500"></span> Systems Operational</span>
-          <span className="text-muted-foreground/70">Synced at {new Date(payload.lastUpdatedAt).toLocaleTimeString()}</span>
+          <span className="text-muted-foreground/70" suppressHydrationWarning>Synced at {payload?.lastUpdatedAt ? new Date(payload.lastUpdatedAt).toLocaleTimeString() : "Just now"}</span>
         </p>
       </div>
 
@@ -92,12 +92,12 @@ export function OverviewDashboard() {
         
         <Card className="shadow-none border-border/40 rounded-2xl flex flex-col justify-center p-6 bg-card hover:bg-muted/30 transition-colors">
           <div className="text-sm font-medium text-muted-foreground uppercase tracking-widest mb-1">Pending Orders</div>
-          <div className="text-3xl font-light tabular-nums tracking-tight">{summary.pendingOrders}</div>
+          <div className="text-3xl font-light tabular-nums tracking-tight">{summary?.pendingOrders || 0}</div>
         </Card>
         
         <Card className="shadow-none border-border/40 rounded-2xl flex flex-col justify-center p-6 bg-card hover:bg-muted/30 transition-colors">
           <div className="text-sm font-medium text-muted-foreground uppercase tracking-widest mb-1">Low Stock Alerts</div>
-          <div className="text-3xl font-light tabular-nums tracking-tight text-destructive">{summary.lowStockProducts}</div>
+          <div className="text-3xl font-light tabular-nums tracking-tight text-destructive">{summary?.lowStockProducts || 0}</div>
         </Card>
       </div>
 
