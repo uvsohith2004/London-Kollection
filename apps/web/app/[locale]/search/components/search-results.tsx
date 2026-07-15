@@ -1,19 +1,19 @@
 "use client"
 
-import { useSearchQuery } from "../services/queries"
-import { SearchParams } from "@/lib/api/index"
-import { PremiumProductCard } from "../../(home)/components/product-card/premium-product-card"
-import { PremiumMobileProductCard } from "../../(home)/components/product-card/premium-mobile-product-card"
+import { useQuery } from "@tanstack/react-query"
+import { SearchQuery } from "@workspace/api-contracts"
+import { productQueries } from "@/queries/products.queries"
+import { ProductCard } from "@/components/product-card"
 import { Skeleton } from "@workspace/ui/components/skeleton"
-import { useDevice } from "@/hooks/use-media-query"
 
 export function SearchResults({
   searchParams,
 }: {
-  searchParams: SearchParams
+  searchParams: SearchQuery
 }) {
-  const { data: products, isLoading } = useSearchQuery(searchParams)
-  const { isMobile } = useDevice()
+  const { data: response, isLoading } = useQuery(productQueries.list(searchParams))
+  // Removed useDevice
+  const products = response?.items
 
   if (isLoading) {
     return (
@@ -66,13 +66,9 @@ export function SearchResults({
 
   return (
     <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6 lg:grid-cols-4">
-      {products.map((product) => (
+      {products.map((product: any, index: number) => (
         <div key={product.id}>
-          {isMobile ? (
-            <PremiumMobileProductCard product={product} />
-          ) : (
-            <PremiumProductCard product={product} />
-          )}
+          <ProductCard product={product} priority={index < 4} />
         </div>
       ))}
     </div>

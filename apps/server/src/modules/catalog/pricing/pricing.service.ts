@@ -1,6 +1,6 @@
 import db from "@/db"
 import { flashSale, flashSaleItem } from "@/db/schemas"
-import { eq, desc, and, inArray } from "drizzle-orm"
+import { eq, desc, and, inArray, or, gt, isNull } from "drizzle-orm"
 
 export class PricingEngineService {
   async applyGlobalPricing<T extends { id: string, price: number, compareAtPrice?: number, variants?: any[] }>(products: (T | null | undefined)[]): Promise<(T | null)[]> {
@@ -12,7 +12,15 @@ export class PricingEngineService {
     const [activeSale] = await db
       .select()
       .from(flashSale)
-      .where(eq(flashSale.isActive, true))
+      .where(
+        and(
+          eq(flashSale.isActive, true),
+          or(
+            isNull(flashSale.scheduleEnd),
+            gt(flashSale.scheduleEnd, new Date())
+          )
+        )
+      )
       .orderBy(desc(flashSale.createdAt))
       .limit(1);
 
@@ -40,13 +48,15 @@ export class PricingEngineService {
       const updatedVariants = product.variants?.map((v: any) => ({
         ...v,
         price: flashPrice,
-        compareAtPrice: v.compareAtPrice || v.price || product.price,
+        discountValue: 0,
+        compareAtPrice: v.compareAtPrice || (v.discountValue ? Number(v.price) + Number(v.discountValue) : v.price) || product.price,
       }));
 
       return {
         ...product,
         price: flashPrice,
-        compareAtPrice: product.compareAtPrice || product.price,
+        discountValue: 0,
+        compareAtPrice: product.compareAtPrice || ((product as any).discountValue ? Number(product.price) + Number((product as any).discountValue) : product.price),
         variants: updatedVariants,
       };
     }) as any;

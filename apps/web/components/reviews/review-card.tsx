@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ReviewResponse, useVoteReview } from "./reviews.queries";
-import { ThumbsUp, ThumbsDown, Star, User } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Star } from "lucide-react";
 import { cn } from "@workspace/ui/lib/utils";
 
 export function ReviewCard({ reviewData }: { reviewData: ReviewResponse }) {
@@ -22,20 +22,12 @@ export function ReviewCard({ reviewData }: { reviewData: ReviewResponse }) {
   };
 
   return (
-    <div className="flex flex-col md:flex-row gap-4 p-5 md:p-6 bg-card border border-border/40 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+    <div className="flex flex-col md:flex-row gap-4 p-5 md:p-6 bg-card border border-border/40 rounded-2xl transition-shadow">
       
       {/* User Info (Mobile: Top, Desktop: Left side) */}
       <div className="flex items-center gap-3 md:flex-col md:w-32 md:items-start shrink-0">
-        <div className="h-10 w-10 md:h-12 md:w-12 rounded-full overflow-hidden bg-muted flex items-center justify-center shrink-0 border border-border">
-          {user.image ? (
-            <img src={user.image} alt={user.name} className="h-full w-full object-cover" />
-          ) : (
-            <User className="h-5 w-5 text-muted-foreground" />
-          )}
-        </div>
         <div className="flex flex-col">
           <span className="font-medium text-sm md:text-base leading-tight">{user.name || "Anonymous"}</span>
-          <span className="text-xs text-muted-foreground mt-0.5">Verified Buyer</span>
         </div>
       </div>
 

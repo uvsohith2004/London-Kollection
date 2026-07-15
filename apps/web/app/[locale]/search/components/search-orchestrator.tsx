@@ -1,6 +1,6 @@
 "use client"
 
-import { SearchParams } from "@/lib/api/index"
+import { SearchQuery } from "@workspace/api-contracts"
 import { SearchFilters } from "./search-filters"
 import { SearchResults } from "./search-results"
 import { useSearchStore } from "../store"
@@ -16,7 +16,7 @@ import { SlidersHorizontal } from "lucide-react"
 export function SearchOrchestrator({
   searchParams,
 }: {
-  searchParams: SearchParams
+  searchParams: SearchQuery
 }) {
   const { isMobileFiltersOpen, setMobileFiltersOpen } = useSearchStore()
 

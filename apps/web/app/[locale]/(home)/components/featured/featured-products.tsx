@@ -4,8 +4,7 @@ import Link from "next/link"
 import { useFeaturedProductsQuery } from "../../services/queries"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { useDevice } from "@/hooks/use-media-query"
-import { PremiumProductCard } from "../product-card/premium-product-card"
-import { PremiumMobileProductCard } from "../product-card/premium-mobile-product-card"
+import { ProductCard } from "@/components/product-card"
 
 export function HomeFeaturedProducts() {
   const { data: products, isLoading } = useFeaturedProductsQuery()
@@ -51,11 +50,7 @@ export function HomeFeaturedProducts() {
           <div className="grid grid-cols-2 gap-4 md:gap-6 lg:grid-cols-4">
             {products?.slice(0, 4).map((product) => (
               <div key={product.id} className="w-full">
-                {isMobile ? (
-                  <PremiumMobileProductCard product={product} />
-                ) : (
-                  <PremiumProductCard product={product} />
-                )}
+                  <ProductCard product={product} />
               </div>
             ))}
           </div>

@@ -84,9 +84,14 @@ export function AddressForm({
         parsedAddress.block = address.addressLine1 || "";
       }
       
+      let initialPhone = address.phone || "";
+      if (initialPhone && !initialPhone.startsWith("+")) {
+        initialPhone = "+" + initialPhone;
+      }
+
       form.reset({
         name: address.name || "",
-        phone: address.phone || "",
+        phone: initialPhone,
         governorate: address.state || "",
         area: address.city || "",
         block: parsedAddress.block || "",

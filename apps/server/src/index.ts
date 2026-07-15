@@ -27,6 +27,7 @@ import {
   adminHeroRouter,
   occasionsRouter,
   adminOccasionsRouter,
+  adminReturnFormsRouter,
 } from "@/modules/catalog"
 
 import { adminBrandsRouter } from "@/modules/catalog/brands/brands.routes"
@@ -223,6 +224,7 @@ adminRouter.route("/email", emailAdminRouter)
 adminRouter.route("/brands", adminBrandsRouter)
 adminRouter.route("/taxes", adminTaxesRouter)
 adminRouter.route("/occasions", adminOccasionsRouter)
+adminRouter.route("/return-forms", adminReturnFormsRouter)
 adminRouter.route("/featured", adminFeaturedRouter)
 
 app.route("/api/admin", adminRouter)
@@ -239,4 +241,3 @@ serve({
   port,
 })
 
-// force reload

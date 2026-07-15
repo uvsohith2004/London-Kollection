@@ -1,34 +1,36 @@
 "use client"
 
 import React from "react"
-import { useSettings } from "@/components/providers/settings-provider"
+import { useCurrency } from "@/components/providers/currency-provider"
 
 interface PriceProps {
+  /** The amount in base currency (KWD) */
   amount: number | string
   className?: string
+  /** Whether to show the currency code/symbol (default: true) */
   showCurrency?: boolean
+  /** Force base currency display (for admin panels) */
+  asBase?: boolean
 }
 
-export function Price({ amount, className, showCurrency = true }: PriceProps) {
-  const { settings } = useSettings()
-  const currencyCode = settings.defaultCurrency || "KWD"
+/**
+ * Centralized price display component.
+ * Automatically converts and formats prices based on the user's detected currency.
+ * Use `asBase` prop in admin panels to always show the store's base currency.
+ */
+export function Price({ amount, className, showCurrency = true, asBase = false }: PriceProps) {
+  const { formatPrice, formatBasePrice, isConverted } = useCurrency()
   
-  const formatted = new Intl.NumberFormat("en-KW", {
-    style: "currency",
-    currency: currencyCode,
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 2
-  }).format(Number(amount))
+  if (!showCurrency) {
+    const num = Number(amount)
+    return <span className={className}>{num.toFixed(2)}</span>
+  }
 
-  // Some designs might just want the number followed by currency like "100.00 KWD"
-  // If the standard Intl output is sufficient, we can just return it.
-  // Alternatively, since the UI currently does `{Number(val).toFixed(2)} KWD`, let's match that format closely:
-  
-  const num = Number(amount).toFixed(2)
+  const formatted = asBase ? formatBasePrice(amount) : formatPrice(amount)
 
   return (
     <span className={className}>
-      {num} {showCurrency && <span className="uppercase">{currencyCode}</span>}
+      {isConverted && !asBase && "≈ "}{formatted}
     </span>
   )
 }

@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchAddresses } from "@/lib/api";
+import { fetchAddresses } from "@/api";
 
-export const useAddressesQuery = () => {
+export const useAddressesQuery = (initialData?: any[]) => {
   return useQuery({
     queryKey: ["addresses"],
+    initialData,
     queryFn: async () => {
       try {
         const response = await fetchAddresses();

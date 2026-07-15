@@ -11,6 +11,7 @@ interface VariantManagerProps {
   form: UseFormReturn<ProductFormValues>
   variantFields: any[]
   removeVariant: (index: number) => void
+  currency?: string
 }
 
 export function VariantManager({ form, variantFields, removeVariant }: VariantManagerProps) {

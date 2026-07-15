@@ -1,193 +1,143 @@
-import { useQuery } from "@tanstack/react-query"
-import {
-  fetchAdminProducts,
-  fetchCategories,
-  fetchAdminCollections,
-  fetchAdminOccasions,
-  fetchAdminOrders,
-  fetchAdminReturns,
-  fetchAdminUsers,
-  fetchCustomerReviews, // using as admin review fetch for now
-  overviewApi,
-  auditApi,
-  fetchAdminFlashSale,
-  fetchAdminHeroCarousel,
-} from "@/lib/api"
-import type { DashboardOverviewResponse } from "@/types/overview-types"
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
+import { adminQueries } from "@/queries/admin.queries";
+import { CategoryApi } from "@/api/categories";
+import { CollectionApi } from "@/api/collections";
+import { OccasionApi } from "@/api/occasions";
+import { AdminApi } from "@/api/admin";
+import { ReviewApi } from "@/api/reviews";
+import { SettingsApi } from "@/api/settings";
+import { HeroApi } from "@/api/hero";
+import { FlashSaleApi } from "@/api/flash-sale";
 
-export const adminKeys = {
-  all: ["admin"] as const,
-  // Catalog
-  products: () => [...adminKeys.all, "products"] as const,
-  categories: () => [...adminKeys.all, "categories"] as const,
-  collections: () => [...adminKeys.all, "collections"] as const,
-  occasions: () => [...adminKeys.all, "occasions"] as const,
-  brands: () => [...adminKeys.all, "brands"] as const,
-  heroCarousel: () => [...adminKeys.all, "heroCarousel"] as const,
-  // Commerce
-  orders: () => [...adminKeys.all, "orders"] as const,
-  returns: () => [...adminKeys.all, "returns"] as const,
-  taxes: () => [...adminKeys.all, "taxes"] as const,
-  // Identity & Engagement
-  users: () => [...adminKeys.all, "users"] as const,
-  reviews: () => [...adminKeys.all, "reviews"] as const,
-  // Dashboard
-  dashboard: () => [...adminKeys.all, "dashboard"] as const,
-  auditLogs: () => [...adminKeys.all, "audit-logs"] as const,
-  // Flash Sale
-  flashSale: () => [...adminKeys.all, "flashSale"] as const,
-}
+export const adminKeys = adminQueries;
 
 export function useAdminProductsQuery(params?: any) {
-  return useQuery({
-    queryKey: [...adminKeys.products(), params],
-    queryFn: () => fetchAdminProducts(params),
-  })
+  return useQuery(adminQueries.productList(params));
 }
 
 export function useAdminCategoriesQuery() {
   return useQuery({
-    queryKey: adminKeys.categories(),
-    queryFn: fetchCategories,
-  })
+    queryKey: adminQueries.categories(),
+    queryFn: () => CategoryApi.getAll(),
+  });
 }
 
 export function useAdminCollectionsQuery(params?: any) {
   return useQuery({
-    queryKey: [...adminKeys.collections(), params],
-    queryFn: () => fetchAdminCollections(params),
-  })
+    queryKey: [...adminQueries.collections(), params],
+    queryFn: () => CollectionApi.getAdminAll(params),
+  });
 }
 
 export function useAdminOccasionsQuery(params?: any) {
   return useQuery({
-    queryKey: [...adminKeys.occasions(), params],
-    queryFn: () => fetchAdminOccasions(params),
-  })
+    queryKey: [...adminQueries.occasions(), params],
+    queryFn: () => OccasionApi.getAll(),
+  });
 }
 
 export function useAdminBrandsQuery(params?: any) {
-  return useQuery({
-    queryKey: [...adminKeys.brands(), params],
-    queryFn: async () => {
-      const { fetchAdminBrands } = await import("@/lib/api")
-      return fetchAdminBrands(params)
-    },
-  })
+  return useQuery(adminQueries.brandList(params));
 }
 
 export function useTaxClassesQuery(params?: any) {
   return useQuery({
-    queryKey: [...adminKeys.taxes(), "classes", params],
-    queryFn: async () => {
-      const { fetchTaxClasses } = await import("@/lib/api")
-      return fetchTaxClasses(params)
-    },
-  })
+    queryKey: [...adminQueries.taxes(), "classes", params],
+    queryFn: () => AdminApi.getTaxClasses(params),
+  });
 }
 
 export function useTaxRatesQuery(params?: any) {
   return useQuery({
-    queryKey: [...adminKeys.taxes(), "rates", params],
-    queryFn: async () => {
-      const { fetchTaxRates } = await import("@/lib/api")
-      return fetchTaxRates(params)
-    },
-  })
+    queryKey: [...adminQueries.taxes(), "rates", params],
+    queryFn: () => AdminApi.getTaxRates(params),
+  });
 }
 
 export function useTaxRulesQuery(params?: any) {
   return useQuery({
-    queryKey: [...adminKeys.taxes(), "rules", params],
-    queryFn: async () => {
-      const { fetchTaxRules } = await import("@/lib/api")
-      return fetchTaxRules(params)
-    },
-  })
+    queryKey: [...adminQueries.taxes(), "rules", params],
+    queryFn: () => AdminApi.getTaxRules(params),
+  });
 }
 
 export function useAdminOrdersQuery(params?: any) {
-  return useQuery({
-    queryKey: [...adminKeys.orders(), params],
-    queryFn: () => fetchAdminOrders(params),
-  })
+  return useQuery(adminQueries.orderList(params));
+}
+
+export function useInfiniteAdminOrdersQuery(params?: any) {
+  return useInfiniteQuery({
+    queryKey: [...adminQueries.orderList(params).queryKey, "infinite"],
+    queryFn: async ({ pageParam = 1 }) => {
+      const res = await AdminApi.getOrders({ ...params, page: pageParam });
+      return res; // Assuming res contains { data: { items, hasMore, nextCursor, counts, total } } or similar
+    },
+    getNextPageParam: (lastPage: any) => {
+      // The API wrapper usually unwraps the "data" envelope, so lastPage might BE the payload directly.
+      const payload = lastPage?.data || lastPage;
+      return payload?.nextCursor || undefined;
+    },
+    initialPageParam: 1,
+  });
 }
 
 export function useAdminReturnsQuery(params?: any) {
-  return useQuery({
-    queryKey: [...adminKeys.returns(), params],
-    queryFn: () => fetchAdminReturns(params),
-  })
+  return useQuery(adminQueries.returnList(params));
 }
 
 export function useAdminUsersQuery(params?: any) {
-  return useQuery({
-    queryKey: [...adminKeys.users(), params],
-    queryFn: () => fetchAdminUsers(params),
-  })
+  return useQuery(adminQueries.userList(params));
 }
 
 export function useAdminReviewsQuery() {
   return useQuery({
-    queryKey: adminKeys.reviews(),
-    queryFn: fetchCustomerReviews,
-  })
+    queryKey: adminQueries.reviews(),
+    queryFn: () => ReviewApi.getAll(),
+  });
 }
 
-export function useDashboardQuery() {
-  return useQuery<DashboardOverviewResponse, Error>({
-    queryKey: adminKeys.dashboard(),
-    queryFn: overviewApi.getDashboardData,
-  })
+export function useDashboardQuery(range?: string) {
+  return useQuery(adminQueries.dashboardData(range));
 }
 
 export function useSettingsQuery() {
   return useQuery({
-    queryKey: [...adminKeys.all, "settings"],
-    queryFn: async () => {
-      const { getSettings } = await import("@/lib/api")
-      return getSettings()
-    },
-  })
+    queryKey: adminQueries.settings(),
+    queryFn: () => AdminApi.getSettings(),
+  });
 }
 
 export function useAuditLogsQuery() {
-  return useQuery({
-    queryKey: adminKeys.auditLogs(),
-    queryFn: auditApi.getLogs,
-  })
+  return useQuery(adminQueries.auditLogList());
 }
 
 export function useAdminFlashSaleQuery() {
   return useQuery({
-    queryKey: adminKeys.flashSale(),
-    queryFn: fetchAdminFlashSale,
-  })
+    queryKey: adminQueries.flashSale(),
+    queryFn: () => AdminApi.getFlashSale(),
+  });
 }
 
 export function useAdminHeroCarouselQuery() {
   return useQuery({
-    queryKey: adminKeys.heroCarousel(),
-    queryFn: fetchAdminHeroCarousel,
-  })
+    queryKey: adminQueries.heroCarousel(),
+    queryFn: () => AdminApi.getHeroCarousel(),
+  });
 }
 
 export function useAdminFeaturedPiecesQuery() {
   return useQuery({
-    queryKey: [...adminKeys.all, "featuredPieces"],
-    queryFn: async () => {
-      const { fetchAdminFeaturedPieces } = await import("@/lib/api")
-      return fetchAdminFeaturedPieces()
-    },
-  })
+    queryKey: adminQueries.featuredPieces(),
+    queryFn: () => AdminApi.getFeaturedPieces(),
+  });
 }
 
 export function useAdminFeaturedCollectionsQuery() {
   return useQuery({
-    queryKey: [...adminKeys.all, "featuredCollections"],
-    queryFn: async () => {
-      const { fetchAdminFeaturedCollections } = await import("@/lib/api")
-      return fetchAdminFeaturedCollections()
-    },
-  })
+    queryKey: adminQueries.featuredCollections(),
+    queryFn: () => AdminApi.getFeaturedCollections(),
+  });
 }
+
+
+

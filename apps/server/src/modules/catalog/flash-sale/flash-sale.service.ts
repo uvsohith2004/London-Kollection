@@ -1,15 +1,21 @@
 import db from "@/db"
 import { flashSale, flashSaleItem, product, productImage, productCategory, category } from "@/db/schemas"
-import { eq, desc, and, inArray } from "drizzle-orm"
+import { eq, desc, and, inArray, or, gt, isNull } from "drizzle-orm"
 import { NotFoundError } from "@/core/errors"
-import { transformProductList } from "../products/products.service"
-
 export class FlashSaleService {
   async getActiveFlashSale() {
     const [activeSale] = await db
       .select()
       .from(flashSale)
-      .where(eq(flashSale.isActive, true))
+      .where(
+        and(
+          eq(flashSale.isActive, true),
+          or(
+            isNull(flashSale.scheduleEnd),
+            gt(flashSale.scheduleEnd, new Date())
+          )
+        )
+      )
       .orderBy(desc(flashSale.createdAt))
       .limit(1)
     
@@ -40,7 +46,7 @@ export class FlashSaleService {
 
     const productIds = items.map(i => i.product.id)
 
-    // Fetch full products to use transformProductList (which includes variants)
+    // Fetch full products
     const fullProducts = await db.query.product.findMany({
       where: inArray(product.id, productIds),
       with: {
@@ -49,27 +55,13 @@ export class FlashSaleService {
       }
     })
 
-    const transformedProducts = fullProducts.map(transformProductList)
-
     const mappedItems = items.map(({ item }) => {
-      const p = transformedProducts.find((tp: any) => tp.id === item.productId)
+      const p = fullProducts.find((tp: any) => tp.id === item.productId)
       if (!p) return null
 
-      const flashPrice = Number(item.flashPrice)
-      
-      // Override variant prices so PremiumProductCard displays the flash price
-      const newVariants = p.variants.map((v: any) => ({
-          ...v,
-          price: flashPrice,
-          compareAtPrice: v.compareAtPrice || v.price 
-      }))
-
       return {
-        ...p,
-        price: flashPrice,
-        originalPrice: p.price,
-        discount: p.price ? Math.max(0, p.price - flashPrice) : 0,
-        variants: newVariants
+        item,
+        product: p
       }
     }).filter(Boolean)
 
@@ -90,6 +82,10 @@ export class FlashSaleService {
     if (!activeSale) {
       const [newSale] = await db.insert(flashSale).values({ isActive: false }).returning()
       activeSale = newSale
+    } else if (activeSale.isActive && activeSale.scheduleEnd && new Date(activeSale.scheduleEnd).getTime() < Date.now()) {
+      // Auto-disable if expired
+      const [updatedSale] = await db.update(flashSale).set({ isActive: false }).where(eq(flashSale.id, activeSale.id)).returning()
+      activeSale = updatedSale
     }
 
     const items = await db.select({
@@ -108,15 +104,8 @@ export class FlashSaleService {
 
     return {
       sale: activeSale,
-      items: items.map(({ item, product }) => ({
-        id: item.id,
-        productId: product.id,
-        title: product.title,
-        originalPrice: product.price,
-        flashPrice: item.flashPrice,
-        sortOrder: item.sortOrder,
-        image: images.find(img => img.productId === product.id)?.asset
-      }))
+      items,
+      images
     }
   }
 

@@ -303,87 +303,56 @@ export class CartService {
 
     const hydratedItems = await Promise.all(activeCart.items.map(async (item) => {
       // 1. Fetch live product data
-      let liveProduct = await productsService.getProductById(item.productId)
+      let rawProduct = await productsService.getProductById(item.productId)
       
       // 2. Apply Global Flash Sale Pricing
-      if (liveProduct) {
-        liveProduct = await pricingEngine.applyGlobalPricingSingle(liveProduct)
+      if (rawProduct) {
+        rawProduct = await pricingEngine.applyGlobalPricingSingle(rawProduct as any)
       }
 
-      if (!liveProduct) {
+      if (!rawProduct) {
         // Product no longer exists or isn't published
-        return {
-          ...item,
-          productName: "Unavailable Product",
-          productSlug: "",
-          sku: "",
-          quantity: item.quantity,
-          unitPrice: 0,
-          discountValue: 0,
-          subtotal: 0,
-          isAvailable: false,
-          optionValues: {},
-        }
+        return { item, rawProduct: null, unitPrice: 0, itemSubtotal: 0, itemTax: 0, stock: 0, compareAtPrice: undefined, variantData: null, isAvailable: false }
       }
 
       // 3. Resolve Variant or Base Product
       let variantData = null
-      let optionValues = {}
-      let sku = liveProduct.sku || ""
       
       if (item.variantId) {
-        variantData = liveProduct.variants?.find(v => v.id === item.variantId)
-        if (variantData) {
-          optionValues = variantData.optionValues || {}
-          sku = variantData.sku || sku
-        }
+        variantData = rawProduct.variants?.find((v: any) => v.id === item.variantId)
       }
 
       // 4. Resolve Pricing
-      const unitPrice = variantData ? variantData.price : liveProduct.price
-      const compareAtPrice = variantData ? variantData.compareAtPrice : liveProduct.compareAtPrice
+      const unitPrice = variantData?.price ? Number(variantData.price) : Number(rawProduct.price)
+      const compareAtPrice = variantData?.compareAtPrice ? variantData.compareAtPrice : (rawProduct as any).compareAtPrice
       const itemSubtotal = unitPrice * item.quantity
 
       // 5. Check Availability (Stock)
-      const stock = variantData ? variantData.stock : liveProduct.variants?.[0]?.stock || 0
+      const stock = variantData ? variantData.stock : rawProduct.variants?.[0]?.stock || 0
       const isAvailable = stock >= item.quantity
 
       // 6. Tax Calculation
-      // If the product has a taxClass, we calculate it. 
-      // (Assuming taxClass has a rate property, e.g. 0.05 for 5%)
       let itemTax = 0
-      if (liveProduct.taxClass?.rate) {
-        itemTax = itemSubtotal * Number(liveProduct.taxClass.rate)
+      if ((rawProduct.taxClass as any)?.rate) {
+        itemTax = itemSubtotal * Number((rawProduct.taxClass as any).rate)
       }
 
       subtotal += itemSubtotal
       taxTotal += itemTax
       
-      // We don't separately add to discountTotal right now since the unitPrice is the final price.
-      // But if we want to show total savings:
       if (compareAtPrice && compareAtPrice > unitPrice) {
         discountTotal += (compareAtPrice - unitPrice) * item.quantity
       }
 
-      // 7. Resolve Image
-      let image = variantData?.images?.[0]?.url || liveProduct.images?.[0]?.url
-
       return {
-        id: item.id,
-        productId: item.productId,
-        variantId: item.variantId,
-        productName: liveProduct.title,
-        productSlug: liveProduct.slug,
-        sku,
-        image,
-        optionValues,
-        quantity: item.quantity,
+        item,
+        rawProduct,
+        variantData,
         unitPrice,
         compareAtPrice,
-        discountValue: compareAtPrice ? compareAtPrice - unitPrice : 0,
-        subtotal: itemSubtotal,
+        itemSubtotal,
         isAvailable,
-        stock,
+        stock
       }
     }))
 

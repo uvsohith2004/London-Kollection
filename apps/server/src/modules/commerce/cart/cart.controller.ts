@@ -2,6 +2,7 @@ import { ok } from "@/core/response"
 import { NotFoundError, BadRequestError } from "@/core/errors"
 import { Context } from "hono"
 import { CartService } from "./cart.service"
+import { transformCartSummary } from "@/core/transformers/cart.transformer"
 
 export class CartController {
   private service = new CartService()
@@ -12,7 +13,7 @@ export class CartController {
     const data = await this.service.getOrCreateCart(user?.id, guestCartId)
     if (!data) throw new NotFoundError("Cart not found")
     const summary = await this.service.calculateCartSummary(data.id)
-    return c.json(ok({ cart: summary }))
+    return c.json(ok({ cart: transformCartSummary(summary) }))
   }
 
   async addItem(c: Context) {
@@ -26,7 +27,7 @@ export class CartController {
     }
     await this.service.addItemToCart(activeCart.id, body.productId, body.quantity, body.variantId)
     const summary = await this.service.calculateCartSummary(activeCart.id)
-    return c.json(ok({ cart: summary }))
+    return c.json(ok({ cart: transformCartSummary(summary) }))
   }
 
   async updateItem(c: Context) {
@@ -41,7 +42,7 @@ export class CartController {
     }
     await this.service.updateCartItem(activeCart.id, itemId, body.quantity)
     const summary = await this.service.calculateCartSummary(activeCart.id)
-    return c.json(ok({ cart: summary }))
+    return c.json(ok({ cart: transformCartSummary(summary) }))
   }
 
   async removeItem(c: Context) {
@@ -55,7 +56,7 @@ export class CartController {
     }
     await this.service.removeItemFromCart(activeCart.id, itemId)
     const summary = await this.service.calculateCartSummary(activeCart.id)
-    return c.json(ok({ cart: summary }))
+    return c.json(ok({ cart: transformCartSummary(summary) }))
   }
 
   async applyCoupon(c: Context) {
@@ -69,7 +70,7 @@ export class CartController {
     }
     await this.service.applyCoupon(activeCart.id, body.couponCode)
     const summary = await this.service.calculateCartSummary(activeCart.id)
-    return c.json(ok({ cart: summary }))
+    return c.json(ok({ cart: transformCartSummary(summary) }))
   }
 
   async updateGiftNote(c: Context) {
@@ -83,7 +84,7 @@ export class CartController {
     }
     await this.service.updateGiftNote(activeCart.id, body.giftNote)
     const summary = await this.service.calculateCartSummary(activeCart.id)
-    return c.json(ok({ cart: summary }))
+    return c.json(ok({ cart: transformCartSummary(summary) }))
   }
 
   async merge(c: Context) {
@@ -92,7 +93,7 @@ export class CartController {
     const items = body.items || [];
     const mergedCart = await this.service.mergeCarts(user.id, items)
     const summary = await this.service.calculateCartSummary(mergedCart!.id)
-    return c.json(ok({ cart: summary }))
+    return c.json(ok({ cart: transformCartSummary(summary) }))
   }
 
   async sync(c: Context) {
@@ -104,6 +105,6 @@ export class CartController {
     // syncCart already returns calculateCartSummary actually, but let's just make it return normally
     const activeCart = await this.service.getOrCreateCart(user?.id, guestCartId)
     const summary = await this.service.calculateCartSummary(activeCart!.id)
-    return c.json(ok({ cart: summary }))
+    return c.json(ok({ cart: transformCartSummary(summary) }))
   }
 }

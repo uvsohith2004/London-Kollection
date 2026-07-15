@@ -1,7 +1,7 @@
 import { Context } from "hono"
 import { ok, created } from "@/core/response"
 import { BrandsService } from "./brands.service"
-
+import { transformBrand } from "@/core/transformers/brand.transformer"
 export class BrandsController {
   private service = new BrandsService()
 
@@ -14,6 +14,13 @@ export class BrandsController {
   async getBrand(c: Context) {
     const id = c.req.param("id")!
     const item = await this.service.getBrandById(id)
+    return c.json(ok(item))
+  }
+
+  async getBySlug(c: Context) {
+    const slug = c.req.param("slug")!
+    const rawItem = await this.service.getBrandBySlug(slug)
+    const item = transformBrand(rawItem)
     return c.json(ok(item))
   }
 

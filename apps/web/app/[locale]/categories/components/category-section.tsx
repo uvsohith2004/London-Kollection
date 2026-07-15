@@ -1,6 +1,6 @@
 import Link from "next/link"
-import { PremiumProductCard } from "@/app/[locale]/(home)/components/product-card/premium-product-card"
-import { fetchSearchProducts } from "@/lib/api"
+import { ProductCard } from "@/components/product-card"
+import { fetchSearchProducts } from "@/api"
 import { ArrowRight } from "lucide-react"
 import { OptimizedImage } from "@/components/optimized-image"
 
@@ -59,10 +59,9 @@ export async function CategorySection({ category }: CategorySectionProps) {
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
         {products.map((product: any, idx: number) => (
-          <PremiumProductCard 
+          <ProductCard 
             key={product.id} 
             product={product} 
-            priority={idx < 4}
           />
         ))}
       </div>

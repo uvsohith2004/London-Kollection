@@ -1,3 +1,4 @@
+import { NotFoundError } from "@/core/errors/http-errors";
 import db from "@/db"
 import { occasion } from "@/db/schemas"
 import { eq, desc } from "drizzle-orm"
@@ -17,9 +18,11 @@ export class OccasionsService {
   }
 
   async getOccasionBySlug(slug: string) {
-    return await db.query.occasion.findFirst({
+    const result = await db.query.occasion.findFirst({
       where: eq(occasion.slug, slug),
     })
+    if (!result) throw new NotFoundError("Occasion not found")
+    return result
   }
 
   async create(data: any) {
@@ -33,6 +36,7 @@ export class OccasionsService {
       .set(data)
       .where(eq(occasion.id, id))
       .returning()
+    if (!updated) throw new NotFoundError("Occasion not found")
     return updated
   }
 
@@ -41,6 +45,7 @@ export class OccasionsService {
       .delete(occasion)
       .where(eq(occasion.id, id))
       .returning()
+    if (!deleted) throw new NotFoundError("Occasion not found")
     return deleted
   }
 }

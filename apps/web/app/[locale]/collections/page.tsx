@@ -1,11 +1,12 @@
-import { fetchAdminCollections, fetchSearchProducts } from "@/lib/api"
-import { PremiumProductCard } from "@/app/[locale]/(home)/components/product-card/premium-product-card"
+import { CollectionService } from "@/services/collection.service"
+import { ProductService } from "@/services/product.service"
+import { ProductCard } from "@/components/product-card"
 import { OptimizedImage } from "@/components/optimized-image"
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 
 async function CollectionSection({ collection, index }: { collection: any, index: number }) {
-  const response = await fetchSearchProducts({ collectionId: collection.id, limit: 4 })
+  const response = await ProductService.search({ collectionId: collection.id, limit: "4" })
   const products = response?.items || []
 
   if (products.length === 0) return null
@@ -67,10 +68,9 @@ async function CollectionSection({ collection, index }: { collection: any, index
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
             {products.map((product: any, idx: number) => (
-              <PremiumProductCard 
+              <ProductCard 
                 key={product.id} 
                 product={product} 
-                priority={index === 0 && idx < 2}
               />
             ))}
           </div>
@@ -81,7 +81,7 @@ async function CollectionSection({ collection, index }: { collection: any, index
 }
 
 export default async function CollectionsPage() {
-  const response = await fetchAdminCollections()
+  const response = await CollectionService.getAdminAll()
   const collections = Array.isArray(response) ? response : (response?.items || [])
 
   const activeCollections = collections.filter((c: any) => c.isActive !== false)

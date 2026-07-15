@@ -4,11 +4,17 @@ import { CloudflareR2Provider } from "@/modules/providers"
 export class MediaService {
   private provider = new CloudflareR2Provider()
 
-  async uploadFile(file: { name: string; type: string; buffer: Buffer }) {
+  async uploadFile(file: { name: string; type: string; buffer: Buffer }, preset?: string) {
     // Validate file size and type
     const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"]
     if (!allowedTypes.includes(file.type)) {
       throw new BadRequestError(`File type ${file.type} is not allowed.`)
+    }
+
+    if (preset) {
+      const { ImageOptimizer } = await import("../optimizer/image.optimizer")
+      const optimizer = new ImageOptimizer()
+      return await optimizer.processBuffer(file.buffer, preset as any)
     }
 
     // Limit to 5MB

@@ -7,6 +7,13 @@ import { useDeleteTaxClassMutation } from "../../mutations"
 import { Button } from "@workspace/ui/components/button"
 import { Badge } from "@workspace/ui/components/badge"
 import { TaxClassForm } from "./tax-class-editor-dialog"
+import { 
+  DataView, 
+  DataViewToolbar, 
+  DataViewContent, 
+  DataViewListCard,
+  DataViewGridCard 
+} from "@/components/data-view"
 
 export function ClassesTab() {
   const { data: response, isLoading } = useTaxClassesQuery()
@@ -60,66 +67,87 @@ export function ClassesTab() {
         </div>
       )}
 
-      <div className="rounded-2xl border border-border/40 bg-card p-1 shadow-sm">
-        {isLoading ? (
-          <div className="flex h-40 items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-16 text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-              <Plus className="h-8 w-8 text-primary" />
+      <DataView 
+        data={items} 
+        filterFn={(item: any, query: string) => item.name.toLowerCase().includes(query.toLowerCase()) || (item.description && item.description.toLowerCase().includes(query.toLowerCase()))}
+        availableLayouts={["list-card", "table", "block-card"]} 
+        defaultLayout="list-card"
+        enableDetailsModal={false}
+      >
+        <div className="mb-6">
+          <DataViewToolbar searchPlaceholder="Search tax classes..." />
+        </div>
+        <DataViewContent
+          columns={[
+            { header: "Name", cell: (item: any) => <span className="font-medium">{item.name}</span> },
+            { header: "Description", cell: (item: any) => <span className="text-muted-foreground truncate max-w-[300px] inline-block">{item.description || "—"}</span> },
+            { 
+              header: "Status", 
+              cell: (item: any) => item.isDefault ? (
+                <Badge variant="outline" className="border-green-500/20 text-green-600 bg-green-500/10">Default</Badge>
+              ) : (
+                <span className="text-muted-foreground text-xs uppercase tracking-wider">—</span>
+              )
+            },
+            {
+              header: "",
+              className: "text-right",
+              cell: (item: any) => (
+                <div className="flex items-center justify-end gap-2">
+                  <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleEdit(item); }} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              )
+            }
+          ]}
+          renderListCard={(item: any) => (
+            <DataViewListCard 
+              item={item}
+              title={item.name}
+              subtitle={item.description}
+              badge={item.isDefault ? (
+                <Badge variant="outline" className="border-primary/20 text-primary bg-primary/10 tracking-widest text-[10px] px-2 py-1 rounded-full uppercase">
+                  Default
+                </Badge>
+              ) : undefined}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
+          )}
+          renderBlockCard={(item: any) => (
+            <DataViewGridCard 
+              item={item}
+              title={item.name}
+              subtitle={item.description}
+              badge={item.isDefault ? (
+                <Badge variant="outline" className="shrink-0 border-primary/20 text-primary bg-primary/10 tracking-widest text-[10px] px-2 py-1 rounded-full uppercase">
+                  Default
+                </Badge>
+              ) : undefined}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
+          )}
+          emptyState={
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-border/40 bg-card p-16 text-center">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                <Plus className="h-8 w-8 text-primary" />
+              </div>
+              <h4 className="text-lg font-medium">No Tax Classes Found</h4>
+              <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+                Create tax classes to categorize your products for taxation.
+              </p>
+              <Button onClick={handleCreate} variant="outline" className="mt-6 rounded-full px-6">
+                Create Tax Class
+              </Button>
             </div>
-            <h4 className="text-lg font-medium">No Tax Classes Found</h4>
-            <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-              Create tax classes to categorize your products for taxation.
-            </p>
-            <Button onClick={handleCreate} variant="outline" className="mt-6 rounded-full px-6">
-              Create Tax Class
-            </Button>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border/40 text-left text-muted-foreground">
-                  <th className="px-6 py-4 font-medium">Name</th>
-                  <th className="px-6 py-4 font-medium">Description</th>
-                  <th className="px-6 py-4 font-medium">Status</th>
-                  <th className="px-6 py-4 font-medium text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item: any) => (
-                  <tr key={item.id} className="border-b border-border/40 transition-colors hover:bg-muted/40 last:border-0">
-                    <td className="px-6 py-4 font-medium">{item.name}</td>
-                    <td className="px-6 py-4 text-muted-foreground truncate max-w-[300px]">
-                      {item.description || "—"}
-                    </td>
-                    <td className="px-6 py-4">
-                      {item.isDefault ? (
-                        <Badge variant="outline" className="border-green-500/20 text-green-600 bg-green-500/10">Default</Badge>
-                      ) : (
-                        <span className="text-muted-foreground text-xs uppercase tracking-wider">—</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(item)} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)} className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+          }
+        />
+      </DataView>
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import { NotFoundError } from "@/core/errors/http-errors";
 import db from "@/db"
 import { address } from "@/db/schemas"
 import { eq, and } from "drizzle-orm"
@@ -59,7 +60,8 @@ export class AddressesService {
       .select()
       .from(address)
       .where(and(eq(address.id, id), eq(address.userId, userId)))
-    return result || null
+    if (!result) throw new NotFoundError("Address not found")
+    return result
   }
 
   async updateAddress(id: string, userId: string, data: any) {
@@ -83,7 +85,8 @@ export class AddressesService {
         .where(and(eq(address.id, id), eq(address.userId, userId)))
         .returning()
 
-      return updated || null
+      if (!updated) throw new NotFoundError("Address not found")
+      return updated
     })
   }
 
@@ -92,7 +95,8 @@ export class AddressesService {
       .delete(address)
       .where(and(eq(address.id, id), eq(address.userId, userId)))
       .returning()
-    return deleted || null
+    if (!deleted) throw new NotFoundError("Address not found")
+    return deleted
   }
 
   async setDefaultAddress(id: string, userId: string, type: string) {
@@ -108,7 +112,8 @@ export class AddressesService {
         .where(and(eq(address.id, id), eq(address.userId, userId)))
         .returning()
 
-      return updated || null
+      if (!updated) throw new NotFoundError("Address not found")
+      return updated
     })
   }
 }

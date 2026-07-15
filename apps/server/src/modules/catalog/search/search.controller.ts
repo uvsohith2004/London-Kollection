@@ -1,6 +1,7 @@
 import { ok } from "@/core/response"
 import { Context } from "hono"
 import { SearchService } from "./search.service"
+import { transformProductList } from "@/core/transformers/product.transformer"
 
 export class SearchController {
   private service = new SearchService()
@@ -15,6 +16,10 @@ export class SearchController {
       limit: q.limit ? Number(q.limit) : undefined,
       page: q.page ? Number(q.page) : undefined,
     })
-    return c.json(ok(results))
+    
+    return c.json(ok({
+      items: results.items.map(transformProductList),
+      pagination: results.pagination
+    }))
   }
 }

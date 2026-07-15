@@ -2,7 +2,7 @@ import { requireRole, requireAuth, AppEnv } from "@/core/middleware"
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
 import { ReturnsController } from "./returns.controller"
-import { CreateReturnRequestSchema, UpdateReturnStatusSchema } from "./returns.validate"
+import { CreateReturnRequestSchema, UpdateReturnStatusSchema } from "@workspace/api-contracts"
 
 export const returnsRouter = new Hono<AppEnv>()
 export const adminReturnsRouter = new Hono<AppEnv>()
@@ -12,6 +12,7 @@ const controller = new ReturnsController()
 returnsRouter.use("*", requireAuth)
 returnsRouter.post("/", zValidator("json", CreateReturnRequestSchema), (c) => controller.createRequest(c))
 returnsRouter.get("/", (c) => controller.getUserReturns(c))
+returnsRouter.post("/:id/cancel", (c) => controller.cancelRequest(c))
 
 // Admin Routes
 adminReturnsRouter.use("*", requireRole("admin"))

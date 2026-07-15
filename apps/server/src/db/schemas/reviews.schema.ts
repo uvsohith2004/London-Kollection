@@ -1,7 +1,9 @@
 import { pgTable, text, uuid, timestamp, index, integer, boolean, jsonb, unique, varchar } from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
-import { product } from "./products.schema"
+import { product, productVariant } from "./products.schema"
 import { user } from "./auth.schema"
+import { order, orderItem } from "./orders.schema"
+
 import type { OptimizedImageAsset } from "./image.schema"
 
 export const review = pgTable(
@@ -18,7 +20,12 @@ export const review = pgTable(
     title: text("title"),
     comment: text("comment"),
     images: jsonb("images").$type<OptimizedImageAsset[]>(),
-    status: text("status").default("Pending").notNull(), // Pending, Approved, Rejected
+    
+    orderId: uuid("order_id").references(() => order.id, { onDelete: "cascade" }),
+    orderItemId: uuid("order_item_id").references(() => orderItem.id, { onDelete: "cascade" }),
+    variantId: varchar("variant_id", { length: 36 }).references(() => productVariant.id, { onDelete: "set null" }),
+
+    isPublished: boolean("is_published").default(false).notNull(),
     verifiedBuyer: boolean("verified_buyer").default(false).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
@@ -28,7 +35,7 @@ export const review = pgTable(
   },
   (table) => [
     index("review_productId_idx").on(table.productId),
-    index("review_status_idx").on(table.status),
+    index("review_is_published_idx").on(table.isPublished),
   ]
 )
 
@@ -59,6 +66,18 @@ export const reviewRelations = relations(review, ({ one, many }) => ({
   user: one(user, {
     fields: [review.userId],
     references: [user.id],
+  }),
+  order: one(order, {
+    fields: [review.orderId],
+    references: [order.id],
+  }),
+  orderItem: one(orderItem, {
+    fields: [review.orderItemId],
+    references: [orderItem.id],
+  }),
+  variant: one(productVariant, {
+    fields: [review.variantId],
+    references: [productVariant.id],
   }),
   votes: many(reviewVote),
 }))

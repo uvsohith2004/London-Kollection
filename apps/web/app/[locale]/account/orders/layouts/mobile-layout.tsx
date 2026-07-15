@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Package, ChevronRight } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
+import { formatBasePrice } from '@/lib/format-price';
 
 export default function MobileOrdersLayout({ orders }: { orders: any[] }) {
   const t = useTranslations('Orders');
@@ -35,7 +36,7 @@ export default function MobileOrdersLayout({ orders }: { orders: any[] }) {
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1">
-                  <span className="font-medium text-foreground">{Number(order.totalAmount).toFixed(2)} KWD</span>
+                  <span className="font-medium text-foreground">{formatBasePrice(order.totalAmount)}</span>
                   <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
                     {t(`status${(order.status || 'Processing').charAt(0).toUpperCase() + (order.status || 'Processing').slice(1).toLowerCase()}`)}
                   </span>

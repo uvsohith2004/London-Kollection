@@ -18,18 +18,11 @@ export class MediaController {
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
-    if (preset) {
-      const { ImageOptimizer } = await import("../optimizer/image.optimizer")
-      const optimizer = new ImageOptimizer()
-      const result = await optimizer.processBuffer(buffer, preset as any)
-      return c.json(ok(result))
-    }
-
     const result = await this.service.uploadFile({
       name: file.name,
       type: file.type,
       buffer,
-    })
+    }, preset)
 
     return c.json(ok(result))
   }

@@ -2,11 +2,12 @@ import { Button } from "@workspace/ui/components/button";
 import { Minus, Plus, Trash2, Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { CartSummary } from "../queries";
+import { CartSummary } from "@/api/cart";
 import { cn } from "@workspace/ui/lib/utils";
 import { useRemoveCartItemMutation, useUpdateCartItemMutation } from "../mutations";
 import { useDebounceCallback } from "@/hooks/use-debounce";
 import { useState, useEffect } from "react";
+import { Price } from "@/components/price";
 
 function MobileCartItem({ item }: { item: CartSummary["items"][number] }) {
   const { mutate: updateQuantity } = useUpdateCartItemMutation();
@@ -90,9 +91,9 @@ function MobileCartItem({ item }: { item: CartSummary["items"][number] }) {
           )}
           
           <div className="flex items-center gap-2 mt-2">
-            <p className="font-semibold text-sm">{Number(item.unitPrice).toFixed(2)} KWD</p>
+            <Price amount={item.unitPrice} className="font-semibold text-sm" />
             {item.compareAtPrice && item.compareAtPrice > item.unitPrice && (
-              <p className="text-xs text-muted-foreground line-through">{Number(item.compareAtPrice).toFixed(2)} KWD</p>
+              <Price amount={item.compareAtPrice} className="text-xs text-muted-foreground line-through" />
             )}
           </div>
         </div>
@@ -153,7 +154,7 @@ export function MobileCart({ summary }: { summary?: CartSummary }) {
       >
         <div className="flex justify-between items-center mb-4">
           <span className="font-medium uppercase tracking-wider text-xs">Total</span>
-          <span className="text-xl font-bold">{total.toFixed(2)} KWD</span>
+          <Price amount={total} className="text-xl font-bold" />
         </div>
         <Link href="/checkout" className="block w-full">
           <Button className="w-full rounded-full py-6 uppercase tracking-widest text-xs font-bold shadow-2xl">

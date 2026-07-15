@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, User, Bot, AlertCircle } from "lucide-react";
-import { apiClient as api } from "@/lib/api/client";
+import { apiClient as api } from "@/api/client";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { useTranslations } from "next-intl";
 

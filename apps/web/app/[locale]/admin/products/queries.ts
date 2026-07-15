@@ -1,10 +1,10 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query"
 import {
   fetchAdminProducts,
   fetchCategories,
   fetchAdminCollections,
   fetchAdminOccasions,
-} from "@/lib/api/index"
+} from "@/api/index"
 
 export const adminCatalogKeys = {
   products: ["adminProducts"] as const,
@@ -19,6 +19,25 @@ export function useAdminProductsQuery(params?: any) {
   return useQuery({
     queryKey: [...adminCatalogKeys.products, params],
     queryFn: () => fetchAdminProducts(params),
+  })
+}
+
+export function useInfiniteAdminProductsQuery(params?: any, initialData?: any) {
+  return useInfiniteQuery({
+    queryKey: [...adminCatalogKeys.products, 'infinite', params],
+    queryFn: async ({ pageParam = 0 }) => {
+      return fetchAdminProducts({ ...params, offset: pageParam, limit: 20 })
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage: any, allPages: any[]) => {
+      const items = lastPage?.items || lastPage || [];
+      if (items.length < 20) return undefined;
+      return allPages.length * 20;
+    },
+    initialData: initialData ? {
+      pages: [initialData],
+      pageParams: [0]
+    } : undefined
   })
 }
 
@@ -47,7 +66,7 @@ export function useAdminBrandsQuery(params?: any) {
   return useQuery({
     queryKey: [...adminCatalogKeys.brands, params],
     queryFn: async () => {
-      const { fetchAdminBrands } = await import("@/lib/api")
+      const { fetchAdminBrands } = await import("@/api")
       return fetchAdminBrands(params)
     },
   })
@@ -57,8 +76,9 @@ export function useTaxClassesQuery(params?: any) {
   return useQuery({
     queryKey: [...adminCatalogKeys.taxClasses, params],
     queryFn: async () => {
-      const { fetchTaxClasses } = await import("@/lib/api")
+      const { fetchTaxClasses } = await import("@/api")
       return fetchTaxClasses(params)
     },
   })
 }
+

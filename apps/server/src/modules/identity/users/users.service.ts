@@ -45,7 +45,23 @@ export class UsersService {
       .set(updateData)
       .where(eq(user.id, id))
       .returning()
-    return updated || null
+      
+    if (!updated) throw new NotFoundError("User not found")
+    return updated
+  }
+
+  async updateAvatar(userId: string, buffer: Buffer) {
+    const { ImageOptimizer } = await import("../../media/optimizer/image.optimizer")
+    const optimizer = new ImageOptimizer()
+    const result = await optimizer.processBuffer(buffer, "avatar")
+    
+    const currentProfile = await this.getProfile(userId)
+    if (currentProfile?.avatar) {
+      await optimizer.deleteAsset(currentProfile.avatar)
+    }
+
+    const profile = await this.updateProfile(userId, { avatar: result })
+    return { avatar: result, profile }
   }
 
   async sendPhoneOTP(id: string, phone: string) {
@@ -104,6 +120,8 @@ export class UsersService {
       .set({ role: role as "user" | "admin", updatedAt: new Date() })
       .where(eq(user.id, id))
       .returning()
-    return updated || null
+      
+    if (!updated) throw new NotFoundError("User not found")
+    return updated
   }
 }

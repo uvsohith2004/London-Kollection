@@ -1,6 +1,8 @@
 import db from "@/db"
 import { userProductHistory, userSearchHistory } from "@/db/schemas/history.schema"
-import { eq, and, desc } from "drizzle-orm"
+import { order, orderItem } from "@/db/schemas/orders.schema"
+import { product } from "@/db/schemas/products.schema"
+import { eq, and, desc, inArray, notInArray, ilike, or } from "drizzle-orm"
 
 export class HistoryService {
   async trackProductView(userId: string, productId: string) {
@@ -54,6 +56,16 @@ export class HistoryService {
     }
   }
 
+  async trackBatch(userId: string, productIds: string[], searchTerms: string[]) {
+    // Process uniquely to avoid duplication in same batch
+    for (const pid of new Set(productIds)) {
+      await this.trackProductView(userId, pid)
+    }
+    for (const term of new Set(searchTerms)) {
+      await this.trackSearch(userId, term)
+    }
+  }
+
   async getHistory(userId: string, limit = 20) {
     const productViews = await db.query.userProductHistory.findMany({
       where: and(eq(userProductHistory.userId, userId), eq(userProductHistory.isArchived, false)),
@@ -87,68 +99,119 @@ export class HistoryService {
       .where(and(eq(userSearchHistory.id, historyId), eq(userSearchHistory.userId, userId)))
   }
 
-  async getRecommendedProducts(userId: string | null, limit = 10) {
+  async getRecommendedProducts(userId: string | null, limit = 20, offset = 0) {
     if (!userId) {
       // Fallback to latest products if no user
-      return await db.query.product.findMany({
+      const products = await db.query.product.findMany({
         where: (p, { eq }) => eq(p.published, true),
         orderBy: (p, { desc }) => [desc(p.createdAt)],
         limit,
+        offset,
         with: { images: true }
       });
+      return { items: products, nextOffset: products.length === limit ? offset + limit : null };
     }
     
+    // 1. Fetch user's view history
     const userViews = await db.query.userProductHistory.findMany({
       where: eq(userProductHistory.userId, userId),
       orderBy: [desc(userProductHistory.lastViewedAt)],
-      limit: 10,
+      limit: 20,
       with: { product: true }
     });
 
-    if (!userViews.length) {
-      return await db.query.product.findMany({
-        where: (p, { eq }) => eq(p.published, true),
-        orderBy: (p, { desc }) => [desc(p.createdAt)],
-        limit,
-        with: { images: true }
-      });
-    }
+    // 2. Fetch user's search history
+    const userSearches = await db.query.userSearchHistory.findMany({
+      where: eq(userSearchHistory.userId, userId),
+      orderBy: [desc(userSearchHistory.lastSearchedAt)],
+      limit: 10
+    });
+
+    // 3. Fetch user's past orders
+    const userOrders = await db.query.order.findMany({
+      where: eq(order.userId, userId),
+      with: {
+        items: {
+          with: { product: true }
+        }
+      },
+      limit: 10
+    });
+
+    // Extract preferred categories
+    const categoryIds = new Set<string>();
+    const viewedProductIds = new Set<string>();
+    const purchasedProductIds = new Set<string>();
     
-    const categoryIds = [...new Set(userViews.map(v => v.product?.categoryId).filter((id): id is string => Boolean(id)))];
-    
-    if (!categoryIds.length) {
-       return await db.query.product.findMany({
-        where: (p, { eq }) => eq(p.published, true),
-        orderBy: (p, { desc }) => [desc(p.createdAt)],
-        limit,
-        with: { images: true }
+    userViews.forEach(v => {
+      if (v.product?.categoryId) categoryIds.add(v.product.categoryId);
+      viewedProductIds.add(v.productId);
+    });
+
+    userOrders.forEach(o => {
+      o.items.forEach(item => {
+        if (item.product?.categoryId) categoryIds.add(item.product.categoryId);
+        if (item.productId) purchasedProductIds.add(item.productId);
       });
+    });
+
+    // Determine query conditions
+    const conditions = [eq(product.published, true)];
+    
+    // Exclude purchased products from recommendations
+    if (purchasedProductIds.size > 0) {
+      conditions.push(notInArray(product.id, Array.from(purchasedProductIds)));
     }
 
-    const recommended = await db.query.product.findMany({
-      where: (p, { inArray, and, eq, notInArray }) => and(
-        inArray(p.categoryId, categoryIds),
-        eq(p.published, true),
-        notInArray(p.id, userViews.map(v => v.productId))
-      ),
+    // Build the recommendation preference condition
+    const preferenceConditions = [];
+
+    if (categoryIds.size > 0) {
+      preferenceConditions.push(inArray(product.categoryId, Array.from(categoryIds)));
+    }
+
+    userSearches.forEach(search => {
+      // Basic matching against title or seoKeywords
+      preferenceConditions.push(ilike(product.title, `%${search.searchTerm}%`));
+      preferenceConditions.push(ilike(product.seoKeywords, `%${search.searchTerm}%`));
+    });
+
+    if (preferenceConditions.length > 0) {
+      const orCond = or(...preferenceConditions);
+      if (orCond) {
+        conditions.push(orCond);
+      }
+    }
+
+    let recommended = await db.query.product.findMany({
+      where: and(...conditions),
       limit,
-      orderBy: (p, { desc }) => [desc(p.createdAt)],
+      offset,
+      orderBy: [desc(product.createdAt)], // Order by newest among matches
       with: { images: true }
     });
 
-    if (recommended.length < limit) {
-        const fallback = await db.query.product.findMany({
-          where: (p, { eq, notInArray, and }) => and(
-            eq(p.published, true),
-            notInArray(p.id, [...userViews.map(v => v.productId), ...recommended.map(r => r.id)])
-          ),
-          orderBy: (p, { desc }) => [desc(p.createdAt)],
-          limit: limit - recommended.length,
-          with: { images: true }
-        });
-        return [...recommended, ...fallback];
+    // If we didn't find enough recommendations based on history, fill with trending/latest
+    if (recommended.length < limit && offset === 0) {
+      const excludeIds = [...Array.from(purchasedProductIds), ...recommended.map(r => r.id)];
+      const fallbackConditions = [eq(product.published, true)];
+      
+      if (excludeIds.length > 0) {
+        fallbackConditions.push(notInArray(product.id, excludeIds));
+      }
+
+      const fallback = await db.query.product.findMany({
+        where: and(...fallbackConditions),
+        orderBy: [desc(product.createdAt)],
+        limit: limit - recommended.length,
+        with: { images: true }
+      });
+      recommended = [...recommended, ...fallback];
     }
 
-    return recommended;
+    return { 
+      items: recommended, 
+      nextOffset: recommended.length === limit ? offset + limit : null 
+    };
   }
 }

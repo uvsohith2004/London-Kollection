@@ -1,3 +1,4 @@
+import { NotFoundError } from "@/core/errors/http-errors";
 import db from "@/db"
 import { collection } from "@/db/schemas"
 import { eq } from "drizzle-orm"
@@ -23,14 +24,21 @@ export class CollectionsService {
 
   async getCollectionById(id: string) {
     const [result] = await db.select().from(collection).where(eq(collection.id, id))
-    return result || null
+    if (!result) throw new NotFoundError("Collection not found")
+    return result
+  }
+
+  async getCollectionBySlug(slug: string) {
+    const [result] = await db.select().from(collection).where(eq(collection.slug, slug))
+    if (!result) throw new NotFoundError("Collection not found")
+    return result
   }
 
   async updateCollection(id: string, data: any) {
     console.log("updateCollection: ",data)
-    const existing = await this.getCollectionById(id)
-    if(!existing){
-      return null
+    const existing = await db.select().from(collection).where(eq(collection.id, id))
+    if(!existing.length){
+      throw new NotFoundError("Collection not found")
     }
     const [result] = await db
       .update(collection)
@@ -40,11 +48,12 @@ export class CollectionsService {
       })
       .where(eq(collection.id, id))
       .returning()
-    return result || null
+    return result
   }
 
   async deleteCollection(id: string) {
     const [result] = await db.delete(collection).where(eq(collection.id, id)).returning()
-    return result || null
+    if (!result) throw new NotFoundError("Collection not found")
+    return result
   }
 }

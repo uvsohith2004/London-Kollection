@@ -2,7 +2,7 @@ import { requireAuth, AppEnv } from "@/core/middleware"
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
 import { CartController } from "./cart.controller"
-import { AddCartItemSchema, UpdateCartItemSchema, ApplyCouponSchema, UpdateGiftNoteSchema, SyncCartSchema } from "./cart.validate"
+import { AddItemSchema, UpdateItemSchema, ApplyCouponSchema, UpdateGiftNoteSchema, SyncCartSchema } from "@workspace/api-contracts"
 
 export const cartRouter = new Hono<AppEnv>()
 const controller = new CartController()
@@ -11,10 +11,10 @@ const controller = new CartController()
 cartRouter.get("/", (c) => controller.getCart(c))
 
 // 2. Add Item to Cart
-cartRouter.post("/items", zValidator("json", AddCartItemSchema), (c) => controller.addItem(c))
+cartRouter.post("/items", zValidator("json", AddItemSchema), (c) => controller.addItem(c))
 
 // 3. Update Cart Item Quantity
-cartRouter.put("/items/:itemId", zValidator("json", UpdateCartItemSchema), (c) => controller.updateItem(c))
+cartRouter.put("/items/:itemId", zValidator("json", UpdateItemSchema), (c) => controller.updateItem(c))
 
 // 4. Remove Item from Cart
 cartRouter.delete("/items/:itemId", (c) => controller.removeItem(c))

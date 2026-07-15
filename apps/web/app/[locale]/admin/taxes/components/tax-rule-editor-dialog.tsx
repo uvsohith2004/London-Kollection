@@ -8,7 +8,7 @@ import { ShieldAlert, Activity, Loader2 } from "lucide-react"
 
 import { Button } from "@workspace/ui/components/button"
 import { Label } from "@workspace/ui/components/label"
-
+import { StickySaveBar } from "@workspace/ui/components/sticky-save-bar"
 import { Card } from "@workspace/ui/components/card"
 import {
   Select,
@@ -228,32 +228,12 @@ export function TaxRuleForm({ initialData, onSuccess, onCancel }: TaxRuleFormPro
           </form>
 
 
-        <div className="mt-4 flex items-center justify-end gap-4 border-t border-border/40 pt-6">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            onClick={() => {
-              const formElement = document.getElementById(
-                "tax-rule-form"
-              ) as HTMLFormElement
-              if (formElement) {
-                formElement.requestSubmit()
-              }
-            }}
-            disabled={!form.formState.isDirty || isPending}
-          >
-            {isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
-            {isEditing ? "Update Rule" : "Create Rule"}
-          </Button>
-        </div>
+        <StickySaveBar
+          formId="tax-rule-form"
+          onCancel={onCancel || (() => {})}
+          isPending={isPending}
+          saveActionLabel={isEditing ? "Update Tax Rule" : "Create Tax Rule"}
+        />
       </div>
     </Card>
   )

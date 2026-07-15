@@ -9,8 +9,9 @@ import {
   fetchNewArrival,
   fetchOccasions,
   fetchPersonalizedRecommendations,
+  fetchPersonalizedRecommendationsPaginated,
   fetchTrendingProducts,
-} from "@/lib/api/index"
+} from "@/api/index"
 import type {
   BannerCarouselResponse,
   ProductsResponse,
@@ -60,7 +61,7 @@ export function useRecentlyUpdatedCategoriesQuery() {
   return useQuery({
     queryKey: ["home", "categories", "recently-updated"],
     queryFn: async () => {
-      const { fetchRecentlyUpdatedCategories } = await import("@/lib/api/index")
+      const { fetchRecentlyUpdatedCategories } = await import("@/api/index")
       return fetchRecentlyUpdatedCategories()
     },
     staleTime: 5 * 60 * 1000,
@@ -92,6 +93,18 @@ export function usePersonalizedRecommendationsQuery() {
     queryFn: fetchPersonalizedRecommendations,
     staleTime: 5 * 60 * 1000,
     select: (data: ProductsResponse) => data.items,
+  })
+}
+
+import { useInfiniteQuery } from "@tanstack/react-query"
+
+export function useInfinitePersonalizedRecommendationsQuery() {
+  return useInfiniteQuery({
+    queryKey: ["home", "infinite-personalized-recommendations"],
+    queryFn: fetchPersonalizedRecommendationsPaginated,
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.nextOffset,
+    staleTime: 5 * 60 * 1000,
   })
 }
 

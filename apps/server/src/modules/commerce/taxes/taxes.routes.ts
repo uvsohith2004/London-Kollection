@@ -9,7 +9,7 @@ import {
   UpdateTaxRateSchema,
   CreateTaxRuleSchema,
   UpdateTaxRuleSchema
-} from "./taxes.validate"
+} from "@workspace/api-contracts"
 
 export const adminTaxesRouter = new Hono<AppEnv>()
 const controller = new TaxesController()

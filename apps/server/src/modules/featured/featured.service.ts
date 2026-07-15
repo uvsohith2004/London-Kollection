@@ -1,7 +1,8 @@
+import { NotFoundError } from "@/core/errors/http-errors";
 import db from "@/db"
 import { featuredPiece, featuredCollection } from "@/db/schemas"
 import { eq, asc } from "drizzle-orm"
-import { transformProductList } from "../catalog/products/products.service"
+import { transformProductList } from "@/core/transformers/product.transformer"
 
 export class FeaturedService {
   // Featured Pieces
@@ -15,7 +16,7 @@ export class FeaturedService {
         }
       }
     })
-    return items.map(item => transformProductList(item.product as any))
+    return items
   }
 
   async getAllFeaturedPiecesForAdmin() {
@@ -47,6 +48,7 @@ export class FeaturedService {
       .set({ isActive, updatedAt: new Date() })
       .where(eq(featuredPiece.id, id))
       .returning();
+    if (!result) throw new NotFoundError("Featured piece not found")
     return result;
   }
 
@@ -59,17 +61,7 @@ export class FeaturedService {
         collection: true
       }
     })
-    return items.map(item => {
-      const col = item.collection as any;
-      if (col && col.image) {
-        let rawUrl = col.image.url;
-        if (col.image.asset) {
-          rawUrl = col.image.asset.webp?.url || col.image.asset.avif?.url || rawUrl;
-        }
-        col.imageUrl = rawUrl && !rawUrl.startsWith("/api/media/view/") ? `/api/media/view/${encodeURIComponent(rawUrl)}` : rawUrl;
-      }
-      return col;
-    })
+    return items
   }
 
   async getAllFeaturedCollectionsForAdmin() {
@@ -97,6 +89,7 @@ export class FeaturedService {
       .set({ isActive, updatedAt: new Date() })
       .where(eq(featuredCollection.id, id))
       .returning();
+    if (!result) throw new NotFoundError("Featured collection not found")
     return result;
   }
 }

@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
-import { twoFactor, admin, emailOTP } from "better-auth/plugins"
+import { twoFactor, admin, emailOTP, multiSession } from "better-auth/plugins"
 import "dotenv/config"
 import db from "../db"
 import { EmailFactory } from "../modules/services/email/email.factory"
@@ -51,6 +51,9 @@ export const auth = betterAuth({
     },
   },
   plugins: [
+    multiSession({
+      maximumSessions: 10,
+    }),
     admin({
       defaultRole: "user",
       adminRoles: ["admin"],

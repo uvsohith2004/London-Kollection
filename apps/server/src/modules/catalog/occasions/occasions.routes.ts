@@ -6,5 +6,5 @@ export const occasionsRouter = new Hono<AppEnv>()
 const controller = new OccasionsController()
 
 // Public Routes
-occasionsRouter.get("/", (c) => controller.list(c))
-occasionsRouter.get("/:slug", (c) => controller.getBySlug(c))
+occasionsRouter.get("/", (c) => controller.list(c) as any)
+occasionsRouter.get("/slug/:slug", (c) => controller.getBySlug(c) as any)

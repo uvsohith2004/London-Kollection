@@ -8,6 +8,3 @@ export const CreateReviewSchema = z.object({
   images: z.array(z.string().url()).optional(),
 })
 
-export const ModerateReviewSchema = z.object({
-  approve: z.boolean(),
-})

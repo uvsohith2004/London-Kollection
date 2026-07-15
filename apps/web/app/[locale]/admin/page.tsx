@@ -1,16 +1,14 @@
-import OverviewPageDesktop from "./components/overview-page-desktop"
-import OverviewPageMobile from "./components/overview-mobile"
+import { HydrationBoundary, dehydrate, QueryClient } from "@tanstack/react-query"
+import { adminQueries } from "@/queries/admin.queries"
+import { OverviewDashboard } from "./components/overview-dashboard"
 
+export default async function OverviewPage() {
+  const queryClient = new QueryClient()
+  await queryClient.prefetchQuery(adminQueries.dashboardData())
 
-export default function OverviewPage() {
   return (
-    <>
-      <div className="hidden lg:block">
-        <OverviewPageDesktop />
-      </div>
-      <div className="block lg:hidden">
-        <OverviewPageMobile />
-      </div>
-    </>
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <OverviewDashboard />
+    </HydrationBoundary>
   )
 }

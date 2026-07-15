@@ -2,6 +2,7 @@ import { ok } from "@/core/response"
 import { NotFoundError } from "@/core/errors"
 import { Context } from "hono"
 import { CategoriesService } from "./categories.service"
+import { transformCategory } from "@/core/transformers/category.transformer"
 
 export class CategoriesController {
   private service = new CategoriesService()
@@ -46,6 +47,20 @@ export class CategoriesController {
     if (!item) {
       throw new NotFoundError("Category not found")
     }
+    return c.json(ok(item))
+  }
+
+  async getById(c: Context) {
+    const id = c.req.param("id")!
+    const rawItem = await this.service.getCategoryById(id)
+    const item = transformCategory(rawItem)
+    return c.json(ok(item))
+  }
+
+  async getBySlug(c: Context) {
+    const slug = c.req.param("slug")!
+    const rawItem = await this.service.getCategoryBySlug(slug)
+    const item = transformCategory(rawItem)
     return c.json(ok(item))
   }
 }

@@ -11,7 +11,7 @@ import { Input } from "@workspace/ui/components/input"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { Label } from "@workspace/ui/components/label"
 import { Switch } from "@workspace/ui/components/switch"
-
+import { StickySaveBar } from "@workspace/ui/components/sticky-save-bar"
 import { Card } from "@workspace/ui/components/card"
 import {
   useCreateTaxClassMutation,
@@ -164,32 +164,12 @@ export function TaxClassForm({ initialData, onSuccess, onCancel }: TaxClassFormP
           </form>
 
 
-        <div className="mt-4 flex items-center justify-end gap-4 border-t border-border/40 pt-6">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            onClick={() => {
-              const formElement = document.getElementById(
-                "tax-class-form"
-              ) as HTMLFormElement
-              if (formElement) {
-                formElement.requestSubmit()
-              }
-            }}
-            disabled={!form.formState.isDirty || isPending}
-          >
-            {isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
-            {isEditing ? "Update Tax Class" : "Create Tax Class"}
-          </Button>
-        </div>
+        <StickySaveBar
+          formId="tax-class-form"
+          onCancel={onCancel || (() => {})}
+          isPending={isPending}
+          saveActionLabel={isEditing ? "Update Tax Class" : "Create Tax Class"}
+        />
       </div>
     </Card>
   )

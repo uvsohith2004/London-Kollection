@@ -1,106 +1,55 @@
-"use client"
+import { serverApi } from "@/api/server";
+import { AddressHeader } from "./components/AddressHeader";
+import { AddressList } from "./components/AddressList";
+import { AddressFormContainer } from "./components/AddressFormContainer";
+import { Button } from "@workspace/ui/components/button";
+import { Plus } from "lucide-react";
+import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
-import { useState, useEffect } from "react"
-import { toast } from "sonner"
-import { Loader2 } from "lucide-react"
-import { useDevice } from "@/hooks/use-media-query"
-import { useAddressesQuery } from "./services/queries"
-import { useDeleteAddressMutation, useSetDefaultAddressMutation } from "./services/mutations"
-import DesktopAddressesLayout from "./layouts/desktop-layout"
-import TabAddressesLayout from "./layouts/tab-layout"
-import MobileAddressesLayout from "./layouts/mobile-layout"
+export default async function AccountAddressesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ action?: string; id?: string }>;
+}) {
+  const t = await getTranslations("Addresses");
+  const params = await searchParams;
+  const isEditing = params.action === "edit";
+  const isAdding = params.action === "add";
+  const showForm = isEditing || isAdding;
 
-import { useTranslations } from "next-intl"
-
-export default function AccountAddressesPage() {
-  const { isDesktop, isTablet } = useDevice()
-  const [mounted, setMounted] = useState(false)
-  const t = useTranslations("Addresses")
-  const [isEditingAddress, setIsEditingAddress] = useState<boolean>(false)
-  const [editingAddressData, setEditingAddressData] = useState<any>(null)
-
-  // Using the new localized architectural hooks
-  const { data: addresses = [], isLoading, isError, refetch } = useAddressesQuery()
-  const deleteMutation = useDeleteAddressMutation()
-  const setDefaultMutation = useSetDefaultAddressMutation()
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  const handleDelete = (id: string) => {
-    if (!confirm(t("deleteConfirm"))) return
-    
-    deleteMutation.mutate(id, {
-      onSuccess: () => {
-        toast.success(t("deleteSuccess"))
-      },
-      onError: (error: any) => {
-        toast.error(error.response?.data?.error || t("deleteError"))
-      }
-    })
+  let addresses: any[] = [];
+  try {
+    addresses = await serverApi.get("/fulfillment/addresses");
+  } catch (error) {
+    console.error("Failed to fetch addresses on server:", error);
   }
 
-  const handleSetDefault = (id: string, type: string) => {
-    setDefaultMutation.mutate({ id, type }, {
-      onSuccess: () => {
-        toast.success(t("setDefaultSuccess"))
-      },
-      onError: (error: any) => {
-        toast.error(error.response?.data?.error || t("setDefaultError"))
-      }
-    })
-  }
+  const selectedAddress = isEditing
+    ? addresses.find((a: any) => a.id === params.id)
+    : undefined;
 
-  const handleAddClick = () => {
-    setEditingAddressData(null)
-    setIsEditingAddress(true)
-  }
+  return (
+    <div className="max-w-5xl bg-background min-h-screen text-foreground pb-20 md:px-4 lg:px-0">
+      <AddressHeader hideAddButton={showForm} />
 
-  const handleEditClick = (address: any) => {
-    setEditingAddressData(address)
-    setIsEditingAddress(true)
-  }
+      {showForm ? (
+        <AddressFormContainer address={selectedAddress} />
+      ) : (
+        <AddressList addresses={addresses} />
+      )}
 
-  const handleCloseForm = () => {
-    setIsEditingAddress(false)
-    setEditingAddressData(null)
-  }
 
-  const handleFormSuccess = () => {
-    handleCloseForm()
-    refetch()
-  }
-
-  if (!mounted || isLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-      </div>
-    )
-  }
-
-  if (isError) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <p className="text-muted-foreground">{t("loadError")}</p>
-      </div>
-    )
-  }
-
-  const props = {
-    addresses,
-    onAdd: handleAddClick,
-    onEdit: handleEditClick,
-    onDelete: handleDelete,
-    onSetDefault: handleSetDefault,
-    isEditingAddress,
-    editingAddressData,
-    handleFormSuccess,
-    handleCloseForm
-  }
-
-  if (isDesktop) return <DesktopAddressesLayout {...props} />
-  if (isTablet) return <TabAddressesLayout {...props} />
-  return <MobileAddressesLayout {...props} />
+      {!showForm && (
+        <div className="fixed bottom-16 left-0 right-0 p-4 bg-background/90 backdrop-blur-xl border-t border-border z-10 md:hidden pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <Link href="?action=add">
+            <Button className="w-full h-14 rounded-xl shadow-lg font-medium text-sm uppercase tracking-widest text-background bg-foreground flex items-center justify-center">
+              <Plus className="w-5 h-5 ltr:mr-2 rtl:ml-2" />
+              {t("addNew")}
+            </Button>
+          </Link>
+        </div>
+      )}
+    </div>
+  );
 }

@@ -2,6 +2,7 @@ import { ok } from "@/core/response"
 import { NotFoundError } from "@/core/errors"
 import { Context } from "hono"
 import { OccasionsService } from "./occasions.service"
+import { transformOccasion } from "@/core/transformers/occasion.transformer"
 
 export class OccasionsController {
   private service = new OccasionsService()
@@ -18,10 +19,8 @@ export class OccasionsController {
 
   async getBySlug(c: Context) {
     const slug = c.req.param("slug")!
-    const item = await this.service.getOccasionBySlug(slug)
-    if (!item) {
-      throw new NotFoundError("Occasion not found")
-    }
+    const rawItem = await this.service.getOccasionBySlug(slug)
+    const item = transformOccasion(rawItem)
     return c.json(ok(item))
   }
 

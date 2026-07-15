@@ -3,6 +3,7 @@ import { Package, ArrowLeft, Truck, CheckCircle2, Clock, XCircle, MapPin, Credit
 import { Button } from '@workspace/ui/components/button';
 import { useTranslations, useLocale } from 'next-intl';
 import { OrderProgressBar } from '@/components/order-progress-bar';
+import { formatBasePrice } from '@/lib/format-price';
 
 export default function DesktopOrderDetailLayout({ order }: { order: any }) {
   const t = useTranslations('Orders');
@@ -58,7 +59,7 @@ export default function DesktopOrderDetailLayout({ order }: { order: any }) {
                         <h3 className="font-medium text-foreground text-lg mb-1">{item.productId}</h3>
                         <p className="text-sm text-muted-foreground mb-4" dir={locale === 'ar' ? 'rtl' : 'ltr'}>{t('quantity')}{item.quantity}</p>
                       </div>
-                      <p className="font-medium text-foreground">{Number(item.priceAtPurchase || item.price || 0).toFixed(2)} KWD</p>
+                      <p className="font-medium text-foreground">{formatBasePrice(item.priceAtPurchase || item.price || 0)}</p>
                     </div>
                   </div>
                 ))}
@@ -91,7 +92,7 @@ export default function DesktopOrderDetailLayout({ order }: { order: any }) {
             <div className="space-y-4 text-sm">
               <div className="flex justify-between text-muted-foreground">
                 <span>{t('subtotal')}</span>
-                <span>{Number(order.totalAmount).toFixed(2)} KWD</span>
+                <span>{formatBasePrice(order.totalAmount)}</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
                 <span>{t('shipping')}</span>
@@ -103,7 +104,7 @@ export default function DesktopOrderDetailLayout({ order }: { order: any }) {
               </div>
               <div className="border-t border-border pt-4 mt-4 flex justify-between font-medium text-lg text-foreground">
                 <span>{t('total')}</span>
-                <span>{Number(order.totalAmount).toFixed(2)} KWD</span>
+                <span>{formatBasePrice(order.totalAmount)}</span>
               </div>
             </div>
           </section>

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { fetchAdminUsers } from "@/lib/api/index"
+import { fetchAdminUsers } from "@/api/index"
 
 export const adminCustomerKeys = {
   all: ["adminCustomers"] as const,

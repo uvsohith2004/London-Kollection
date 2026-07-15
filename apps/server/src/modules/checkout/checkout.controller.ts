@@ -1,6 +1,7 @@
 import { ok, fail, created, paginated } from "@/core/response"
 import { Context } from "hono"
 import { CheckoutService } from "./checkout.service"
+import { transformOrderPreviewSummary } from "@/core/transformers/checkout.transformer"
 
 export class CheckoutController {
   private checkoutService = new CheckoutService()
@@ -20,6 +21,7 @@ export class CheckoutController {
     const body = c.req.valid("json" as never) as any
     const summary = await this.checkoutService.previewOrder(userId, body)
 
-    return c.json(ok(summary))
+    return c.json(ok(transformOrderPreviewSummary(summary)))
   }
 }
+

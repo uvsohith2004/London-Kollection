@@ -9,11 +9,12 @@ export const adminCollectionsRouter = new Hono<AppEnv>()
 const controller = new CollectionsController()
 
 // Public Routes
-collectionsRouter.get("/", (c) => controller.list(c))
-collectionsRouter.get("/featured", (c) => controller.getFeatured(c))
+collectionsRouter.get("/", (c) => controller.list(c) as any)
+collectionsRouter.get("/featured", (c) => controller.getFeatured(c) as any)
+collectionsRouter.get("/slug/:slug", (c) => controller.getBySlug(c) as any)
 
 // Admin Routes
 adminCollectionsRouter.use("*", requireRole("admin"))
-adminCollectionsRouter.post("/", zValidator("json", CreateCollectionSchema), (c) => controller.create(c))
-adminCollectionsRouter.put("/:id", zValidator("json", UpdateCollectionSchema), (c) => controller.update(c))
-adminCollectionsRouter.delete("/:id", (c) => controller.delete(c))
+adminCollectionsRouter.post("/", zValidator("json", CreateCollectionSchema) as any, (c) => controller.create(c) as any)
+adminCollectionsRouter.put("/:id", zValidator("json", UpdateCollectionSchema) as any, (c) => controller.update(c) as any)
+adminCollectionsRouter.delete("/:id", (c) => controller.delete(c) as any)

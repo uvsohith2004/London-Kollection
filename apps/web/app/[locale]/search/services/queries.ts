@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
-import { fetchSearchProducts, SearchParams } from "@/lib/api/index"
-import { apiClient } from "@/lib/api/client"
+import { fetchSearchProducts, SearchParams } from "@/api/index"
+import { apiClient } from "@/api/client"
 
 import { Product } from "@/types/types"
 

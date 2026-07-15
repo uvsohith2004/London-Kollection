@@ -23,6 +23,15 @@ export class HistoryController {
     return c.json(ok({ success: true }))
   }
 
+  async trackBatch(c: Context) {
+    const { productIds = [], searchTerms = [] } = await c.req.valid("json" as never) as any
+    const userId = (c.get("user") as any)?.id || (c.get("session") as any)?.userId || null
+    if (userId) {
+      await this.service.trackBatch(userId, productIds, searchTerms)
+    }
+    return c.json(ok({ success: true }))
+  }
+
   async getHistory(c: Context) {
     const userId = (c.get("user") as any)?.id || (c.get("session") as any)?.userId || null
     if (!userId) return c.json(ok({ productViews: [], searches: [] }))
@@ -34,8 +43,9 @@ export class HistoryController {
 
   async getRecommended(c: Context) {
     const userId = (c.get("user") as any)?.id || (c.get("session") as any)?.userId || null
-    const limit = c.req.query("limit") ? Number(c.req.query("limit")) : 10
-    const items = await this.service.getRecommendedProducts(userId, limit)
+    const limit = c.req.query("limit") ? Number(c.req.query("limit")) : 20
+    const offset = c.req.query("offset") ? Number(c.req.query("offset")) : 0
+    const items = await this.service.getRecommendedProducts(userId, limit, offset)
     return c.json(ok(items))
   }
 

@@ -1,5 +1,7 @@
 import { SearchOrchestrator } from "./components/search-orchestrator"
-import { SearchParams } from "@/lib/api/index"
+import { SearchQuery } from "@workspace/api-contracts"
+import { HydrationBoundary, dehydrate, QueryClient } from "@tanstack/react-query"
+import { productQueries } from "@/queries/products.queries"
 
 export default async function SearchPage({
   searchParams,
@@ -8,28 +10,32 @@ export default async function SearchPage({
 }) {
   const resolvedParams = await searchParams
 
-  // Transform next.js searchParams into our typed SearchParams
-  const params: SearchParams = {
+  const params: SearchQuery = {
     q: typeof resolvedParams.q === "string" ? resolvedParams.q : undefined,
-    category:
+    categoryId:
       typeof resolvedParams.category === "string"
         ? resolvedParams.category
         : undefined,
     minPrice:
       typeof resolvedParams.minPrice === "string"
-        ? Number(resolvedParams.minPrice)
+        ? resolvedParams.minPrice
         : undefined,
     maxPrice:
       typeof resolvedParams.maxPrice === "string"
-        ? Number(resolvedParams.maxPrice)
+        ? resolvedParams.maxPrice
         : undefined,
-    sort:
-      typeof resolvedParams.sort === "string" ? resolvedParams.sort : undefined,
+    sortBy:
+      typeof resolvedParams.sort === "string" ? (resolvedParams.sort as any) : undefined,
   }
+
+  const queryClient = new QueryClient()
+  await queryClient.prefetchQuery(productQueries.list(params))
 
   return (
     <div className="bg-background">
-      <SearchOrchestrator searchParams={params} />
+      <HydrationBoundary state={dehydrate(queryClient)}>
+        <SearchOrchestrator searchParams={params} />
+      </HydrationBoundary>
     </div>
   )
 }

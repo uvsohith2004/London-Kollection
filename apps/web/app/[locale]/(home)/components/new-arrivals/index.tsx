@@ -5,8 +5,7 @@ import { MoveRight } from "lucide-react"
 import { useNewArrivalsQuery } from "../../services/queries"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { useDevice } from "@/hooks/use-media-query"
-import { PremiumProductCard } from "../product-card/premium-product-card"
-import { PremiumMobileProductCard } from "../product-card/premium-mobile-product-card"
+import { ProductCard } from "@/components/product-card"
 import {
   Carousel,
   CarouselContent,
@@ -67,13 +66,9 @@ export function HomeNewArrivals() {
                 {products?.map((product) => (
                   <CarouselItem
                     key={product.id}
-                    className="basis-[85vw] pl-4 sm:basis-[45vw] md:basis-[33vw] md:pl-6 lg:basis-[25vw]"
+                    className="basis-[45vw] pl-4 sm:basis-[33vw] md:basis-[25vw] md:pl-6 lg:basis-[20vw]"
                   >
-                    {isMobile ? (
-                      <PremiumMobileProductCard product={product} />
-                    ) : (
-                      <PremiumProductCard product={product} />
-                    )}
+                      <ProductCard product={product} />
                   </CarouselItem>
                 ))}
               </CarouselContent>

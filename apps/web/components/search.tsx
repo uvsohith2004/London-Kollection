@@ -8,6 +8,8 @@ import { Input } from "@workspace/ui/components/input";
 import { cn } from "@workspace/ui/lib/utils";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useSearchQuery } from "./search.queries";
+import { useInteractionStore } from "@/stores/use-interaction-store";
+import { useRouter } from "next/navigation";
 
 interface SearchProps {
   className?: string;
@@ -19,8 +21,17 @@ export function Search({ className, isMobile }: SearchProps) {
   const [isFocused, setIsFocused] = useState(false);
   const debouncedQuery = useDebounce(query, 500); // Wait 500ms before triggering API
   const containerRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   const { data, isLoading, isError } = useSearchQuery(debouncedQuery);
+
+  const handleSearchSubmit = () => {
+    if (query.trim().length > 0) {
+      useInteractionStore.getState().trackSearch(query.trim());
+      setIsFocused(false);
+      router.push(`/search?q=${encodeURIComponent(query.trim())}`);
+    }
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -48,6 +59,12 @@ export function Search({ className, isMobile }: SearchProps) {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => setIsFocused(true)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            handleSearchSubmit();
+          }
+        }}
         className={cn(
           "w-full bg-muted/30 border-border/50 rounded-full focus-visible:ring-1 focus-visible:ring-foreground focus-visible:bg-transparent transition-all placeholder:text-muted-foreground/70",
           isMobile ? "h-10 pl-10 pr-10 text-sm" : "h-12 pl-12 pr-12 text-base"
@@ -132,7 +149,10 @@ export function Search({ className, isMobile }: SearchProps) {
               
               <Link 
                 href={`/search?q=${encodeURIComponent(query)}`}
-                onClick={() => setTimeout(() => setIsFocused(false), 100)}
+                onClick={() => {
+                  useInteractionStore.getState().trackSearch(query.trim());
+                  setTimeout(() => setIsFocused(false), 100);
+                }}
                 className="p-3 bg-muted/30 text-center text-sm font-medium hover:bg-muted/50 transition-colors"
               >
                 View all {data.pagination.total} results

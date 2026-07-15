@@ -75,19 +75,9 @@ export class UsersController {
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
-    // Process directly through optimizer
-    const result = await this.imageOptimizer.processBuffer(buffer, "avatar")
+    const result = await this.service.updateAvatar(user.id, buffer)
     
-    // Check for existing avatar to delete from storage
-    const currentProfile = await this.service.getProfile(user.id)
-    if (currentProfile?.avatar) {
-      await this.imageOptimizer.deleteAsset(currentProfile.avatar)
-    }
-
-    // Store variants in the avatar field natively as JSONB
-    const profile = await this.service.updateProfile(user.id, { avatar: result })
-    
-    return c.json(ok({ avatar: result, profile }))
+    return c.json(ok(result))
   }
 
   async sendOtp(c: Context) {
@@ -119,9 +109,6 @@ export class UsersController {
     const id = c.req.param("id")!
     const body = c.req.valid("json" as never) as any
     const updated = await this.service.updateUserRoleByAdmin(id, body.role)
-    if (!updated) {
-      throw new NotFoundError("User not found")
-    }
     return c.json(ok({ user: updated }))
   }
 }

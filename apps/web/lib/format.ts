@@ -1,15 +1,12 @@
 import { useSettings } from "@/components/providers/settings-provider"
+import { useCurrency } from "@/components/providers/currency-provider"
 
-/** Dynamic currency formatter hook, shared by every overview component. */
+/** Dynamic currency formatter hook for admin (always base currency). */
 export function useFormatCurrency() {
-  const { settings } = useSettings()
+  const { formatBasePrice } = useCurrency()
   
-  return function formatCurrency(value: number, currencyCode?: string) {
-    return new Intl.NumberFormat("en-KW", {
-      style: "currency",
-      currency: currencyCode || settings.defaultCurrency || "KWD",
-      maximumFractionDigits: 0,
-    }).format(value)
+  return function formatCurrency(value: number) {
+    return formatBasePrice(value)
   }
 }
 

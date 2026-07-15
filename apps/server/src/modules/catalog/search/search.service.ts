@@ -106,7 +106,7 @@ export class SearchService {
 
     // Count total matches
     const totalResult = await db
-      .select({ count: sql<number>`count(*)` })
+      .select({ count: sql`count(*)`.mapWith(Number) })
       .from(product)
       .where(and(...conditions))
     const total = Number(totalResult[0]?.count || 0)

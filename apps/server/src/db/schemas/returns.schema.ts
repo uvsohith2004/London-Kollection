@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, index, jsonb } from "drizzle-orm/pg-core"
+import { pgTable, text, uuid, timestamp, index, jsonb, integer } from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 import { order } from "./orders.schema"
 import { user } from "./auth.schema"
@@ -18,7 +18,11 @@ export const returnRequest = pgTable(
     returnType: text("return_type").notNull(),
     reason: text("reason"),
     images: jsonb("images").$type<OptimizedImageAsset[]>(), // Array of optimized image assets
+    formData: jsonb("form_data"),
+    returnFormVersion: integer("return_form_version"),
     adminNotes: text("admin_notes"),
+    pickupDate: timestamp("pickup_date"),
+    pickedUpAt: timestamp("picked_up_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()

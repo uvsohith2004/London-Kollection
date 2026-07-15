@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useCartQuery } from '@/app/[locale]/cart/queries';
-import { api } from '@/lib/api';
+import { api } from '@/api';
 import { useRouter } from 'next/navigation';
+import { Price } from '@/components/price';
 
 export default function TabLayout() {
   // Similar to desktop but slightly adjusted for tablet screens
@@ -65,9 +66,7 @@ export default function TabLayout() {
                       <h3 className="font-medium text-gray-900">{item.productName}</h3>
                       <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
                     </div>
-                    <div className="font-medium">
-                      {Number(item.subtotal).toFixed(2)} KWD
-                    </div>
+                    <Price amount={item.subtotal} className="font-medium" />
                   </div>
                 </div>
               ))}
@@ -76,7 +75,7 @@ export default function TabLayout() {
             <div className="mt-8 pt-6 border-t border-gray-200">
                <div className="flex justify-between text-xl font-medium mb-8">
                 <span>Total</span>
-                <span>{total.toFixed(2)} KWD</span>
+                <span><Price amount={total} /></span>
               </div>
               <button 
                 onClick={handleCheckout}

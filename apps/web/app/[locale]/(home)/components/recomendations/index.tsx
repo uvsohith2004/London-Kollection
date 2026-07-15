@@ -1,26 +1,35 @@
 "use client"
 
-import { usePersonalizedRecommendationsQuery } from "../../services/queries"
+import { useInfinitePersonalizedRecommendationsQuery } from "../../services/queries"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { useDevice } from "@/hooks/use-media-query"
-import { PremiumProductCard } from "../product-card/premium-product-card"
-import { PremiumMobileProductCard } from "../product-card/premium-mobile-product-card"
+import { ProductCard } from "@/components/product-card"
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
 } from "@workspace/ui/components/carousel"
+import { Button } from "@workspace/ui/components/button"
+import { Loader2 } from "lucide-react"
 
 export function HomePersonalizedRecommendations() {
-  const { data: products, isLoading } = usePersonalizedRecommendationsQuery()
+  const { data, isLoading, isError, error, isFetchingNextPage, hasNextPage, fetchNextPage } = useInfinitePersonalizedRecommendationsQuery()
   const { isMobile } = useDevice()
 
-  // Only render if we have data
-  if (!isLoading && (!products || products.length === 0)) return null
+  const allProducts = data?.pages.flatMap(page => page.items) || []
+
+  // Only render if we have data or are loading
+  if (!isLoading && allProducts.length === 0) {
+    if (isError) {
+      console.error("Recommendations error:", error);
+      return <div className="p-8 text-red-500">Error loading recommendations: {String(error)}</div>
+    }
+    return <div className="p-8 text-gray-500">No recommended products found.</div>
+  }
 
   return (
     <div className="w-full">
-      <div className="container mx-auto mb-8 px-4 text-center md:px-6 md:text-start">
+      <div className="container mx-auto mb-8 px-4 text-center md:px-6 md:text-start flex justify-between items-center">
         <h2
           className="font-serif text-2xl tracking-tight md:text-4xl"
           dir="auto"
@@ -37,7 +46,7 @@ export function HomePersonalizedRecommendations() {
                 key={i}
                 className="w-[85vw] shrink-0 sm:w-[45vw] md:w-[33vw] lg:w-[25vw]"
               >
-                <Skeleton className="aspect-3/4 w-full" />
+                <Skeleton className="aspect-[3/4] w-full" />
                 <Skeleton className="mt-4 h-5 w-3/4" />
                 <Skeleton className="mt-2 h-4 w-1/4" />
               </div>
@@ -49,19 +58,35 @@ export function HomePersonalizedRecommendations() {
               opts={{ align: "start", dragFree: true }}
               className="w-full"
             >
-              <CarouselContent className="-ml-4 md:-ml-6">
-                {products?.map((product) => (
+              <CarouselContent className="-ml-4 md:-ml-6 items-center">
+                {allProducts.map((product) => (
                   <CarouselItem
                     key={product.id}
-                    className="basis-[85vw] pl-4 sm:basis-[45vw] md:basis-[33vw] md:pl-6 lg:basis-[25vw]"
+                    className="basis-[45vw] pl-4 sm:basis-[33vw] md:basis-[25vw] md:pl-6 lg:basis-[20vw]"
                   >
-                    {isMobile ? (
-                      <PremiumMobileProductCard product={product} />
-                    ) : (
-                      <PremiumProductCard product={product} />
-                    )}
+                      <ProductCard product={product} />
                   </CarouselItem>
                 ))}
+                
+                {hasNextPage && (
+                  <CarouselItem className="basis-[50vw] pl-4 sm:basis-[30vw] md:basis-[20vw] md:pl-6 lg:basis-[15vw] flex items-center justify-center">
+                    <Button 
+                      variant="outline" 
+                      className="rounded-full px-8 py-6 h-auto"
+                      onClick={() => fetchNextPage()}
+                      disabled={isFetchingNextPage}
+                    >
+                      {isFetchingNextPage ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        "See More"
+                      )}
+                    </Button>
+                  </CarouselItem>
+                )}
               </CarouselContent>
             </Carousel>
           </div>

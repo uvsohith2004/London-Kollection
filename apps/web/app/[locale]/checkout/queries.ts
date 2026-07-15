@@ -1,25 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchAddresses, createAddress, updateAddress } from "@/lib/api";
+import { CheckoutService } from "@/services/checkout.service";
 
 export const ADDRESSES_QUERY_KEY = ["addresses"];
 
 export function useAddressesQuery() {
   return useQuery({
     queryKey: ADDRESSES_QUERY_KEY,
-    queryFn: async () => {
-      const response = await fetchAddresses();
-      // Assume the backend returns { data: [...] } or just [...]
-      return (response as any)?.data || response || [];
-    },
+    queryFn: () => CheckoutService.getAddresses(),
   });
 }
 
 export function useCreateAddressMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: any) => {
-      return await createAddress(payload);
-    },
+    mutationFn: (payload: any) => CheckoutService.createAddress(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ADDRESSES_QUERY_KEY });
     },
@@ -29,9 +23,7 @@ export function useCreateAddressMutation() {
 export function useUpdateAddressMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, payload }: { id: string; payload: any }) => {
-      return await updateAddress(id, payload);
-    },
+    mutationFn: ({ id, payload }: { id: string; payload: any }) => CheckoutService.updateAddress(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ADDRESSES_QUERY_KEY });
     },

@@ -1,91 +1,25 @@
-"use client";
+import { HydrationBoundary, dehydrate, QueryClient } from "@tanstack/react-query";
+import { productQueries } from "@/queries/products.queries";
+import { ClientProductView } from "./client-product-view";
 
-import { use } from "react";
-import { useProductQuery, useRelatedProductsQuery } from "./queries";
-import { MobileProduct } from "./components/mobile-product";
-import { DesktopProduct } from "./components/desktop-product";
-import { TabProduct } from "./components/tab-product";
-import { Loader2 } from "lucide-react";
-import { Link } from "@/i18n/routing";
-import { Button } from "@workspace/ui/components/button";
-import { useDevice } from "@/hooks/use-media-query";
-import { useEffect, useState } from "react";
-import { PremiumProductCard } from "@/app/[locale]/(home)/components/product-card/premium-product-card";
-import { Product } from "@/types/types";
-
-export default function ProductPage({ params }: { params: Promise<{ slug: string; variantId: string }> }) {
-  const { slug, variantId } = use(params);
-  const { data: product, isLoading, error } = useProductQuery(slug);
-  const { data: relatedProducts } = useRelatedProductsQuery(product?.id);
-  const { isDesktop, isTablet, isMobile } = useDevice();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted || isLoading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (error || !product) {
-    return (
-      <div className="flex flex-col h-screen w-full items-center justify-center bg-background px-4">
-        <h1 className="text-3xl font-serif tracking-tight mb-4">Product Not Found</h1>
-        <p className="text-muted-foreground mb-8 text-center max-w-md">
-          We couldn't find the product you're looking for. It may have been removed or the link is incorrect.
-        </p>
-        <Link href="/">
-          <Button className="rounded-full px-8 uppercase tracking-widest text-xs font-bold">
-            Return Home
-          </Button>
-        </Link>
-      </div>
-    );
+export default async function ProductPage({ params }: { params: Promise<{ slug: string; variantId: string }> }) {
+  const { slug, variantId } = await params;
+  
+  const queryClient = new QueryClient();
+  
+  // Prefetch the main product
+  await queryClient.prefetchQuery(productQueries.detailBySlug(slug));
+  
+  // To prefetch related products, we need the product ID. 
+  // We can fetch it, then prefetch related.
+  const product = queryClient.getQueryData(productQueries.detailBySlug(slug).queryKey) as any;
+  if (product?.id) {
+    await queryClient.prefetchQuery(productQueries.relatedProducts(product.id));
   }
 
   return (
-    <main className="min-h-screen bg-background pt-8 max-md:pt-0">
-      {isDesktop && <DesktopProduct product={product} variantId={variantId} />}
-      {isTablet && <TabProduct product={product} variantId={variantId} />}
-      {!isDesktop && !isTablet && <MobileProduct product={product} variantId={variantId} />}
-
-      {/* Product Reviews */}
-      <div className="container mx-auto px-4 md:px-8 py-16 md:py-24 border-t border-border/50">
-        <div className="max-w-350 mx-auto">
-          <h2 className="text-2xl md:text-3xl font-serif tracking-wide mb-12">Customer Reviews</h2>
-          <div className="flex items-center justify-center min-h-[200px] bg-secondary/5 rounded-xl border border-border/50 text-muted-foreground text-sm uppercase tracking-widest">
-            Reviews Coming Soon
-          </div>
-        </div>
-      </div>
-
-      {/* Related Products Placeholder */}
-      <div className="bg-muted/10 border-t border-border/50">
-        <div className="container mx-auto px-4 md:px-8 py-16 md:py-24">
-          <div className="max-w-7xl mx-auto">
-            <h2 className="text-2xl md:text-3xl font-serif tracking-wide mb-12 text-center">You May Also Like</h2>
-            {relatedProducts && relatedProducts.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {relatedProducts.map((p:any) => (
-                  <PremiumProductCard 
-                    key={p.id} 
-                    product={p as any} 
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="flex items-center justify-center min-h-[100px] text-muted-foreground text-sm uppercase tracking-widest">
-                No related products found
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </main>
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <ClientProductView slug={slug} variantId={variantId} />
+    </HydrationBoundary>
   );
 }

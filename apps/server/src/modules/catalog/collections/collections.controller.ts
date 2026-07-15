@@ -2,6 +2,7 @@ import { ok } from "@/core/response"
 import { NotFoundError } from "@/core/errors"
 import { Context } from "hono"
 import { CollectionsService } from "./collections.service"
+import { transformCollection } from "@/core/transformers/collection.transformer"
 
 export class CollectionsController {
   private service = new CollectionsService()
@@ -38,6 +39,13 @@ export class CollectionsController {
     if (!item) {
       throw new NotFoundError("Collection not found")
     }
+    return c.json(ok(item))
+  }
+
+  async getBySlug(c: Context) {
+    const slug = c.req.param("slug")!
+    const rawItem = await this.service.getCollectionBySlug(slug)
+    const item = transformCollection(rawItem)
     return c.json(ok(item))
   }
 }

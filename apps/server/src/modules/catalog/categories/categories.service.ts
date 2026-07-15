@@ -1,3 +1,4 @@
+import { NotFoundError } from "@/core/errors/http-errors";
 import db from "@/db"
 import { category, product } from "@/db/schemas"
 import { eq, desc, isNotNull, sql } from "drizzle-orm"
@@ -24,8 +25,19 @@ export class CategoriesService {
   }
 
   async getCategoryById(id: string) {
-    const [result] = await db.select().from(category).where(eq(category.id, id))
-    return result || null
+    const result = await db.query.category.findFirst({
+      where: eq(category.id, id),
+    })
+    if (!result) throw new NotFoundError("Category not found")
+    return result
+  }
+
+  async getCategoryBySlug(slug: string) {
+    const result = await db.query.category.findFirst({
+      where: eq(category.slug, slug),
+    })
+    if (!result) throw new NotFoundError("Category not found")
+    return result
   }
 
   async updateCategory(id: string, data: any) {
@@ -37,18 +49,20 @@ export class CategoriesService {
       })
       .where(eq(category.id, id))
       .returning()
-    return result || null
+    if (!result) throw new NotFoundError("Category not found")
+    return result
   }
 
   async deleteCategory(id: string) {
     const [result] = await db.delete(category).where(eq(category.id, id)).returning()
-    return result || null
+    if (!result) throw new NotFoundError("Category not found")
+    return result
   }
 
   async getRecentlyUpdatedCategories(limit = 3) {
     const recentProducts = await db.select({
       categoryId: product.categoryId,
-      maxUpdatedAt: sql<Date>`MAX(${product.updatedAt})`.as('max_updated_at')
+      maxUpdatedAt: sql`MAX(${product.updatedAt})`.as('max_updated_at')
     })
     .from(product)
     .where(isNotNull(product.categoryId))

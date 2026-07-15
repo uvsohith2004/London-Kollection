@@ -1,21 +1,21 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "@/lib/api/client";
-import { CartSummary } from "./queries";
+import { CartApi } from "@/api/cart";
+import { cartQueries } from "@/queries/cart.queries";
 import { toast } from "sonner";
+import { CartViewModel } from "@/services/mappers/cart.mapper";
 
 export const useAddToCartMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (payload: { productId: string; variantId?: string | null; quantity: number }) => {
-      const { data } = await apiClient.post("/cart/items", payload);
-      return data;
+      return await CartApi.addItem(payload.productId, payload.quantity, payload.variantId);
     },
     onSuccess: (data: any) => {
       if (data?.cart) {
-        queryClient.setQueryData(["cart"], data.cart);
+        queryClient.setQueryData(cartQueries.current().queryKey, data.cart);
       } else {
-        queryClient.invalidateQueries({ queryKey: ["cart"] });
+        queryClient.invalidateQueries(cartQueries.current());
       }
       toast.success("Added to cart");
     },
@@ -31,15 +31,15 @@ export const useUpdateCartItemMutation = () => {
 
   return useMutation({
     mutationFn: async ({ itemId, quantity }: { itemId: string; quantity: number }) => {
-      const { data } = await apiClient.put(`/cart/items/${itemId}`, { quantity });
-      return data;
+      const { put } = await import("@/api/client");
+      return (await put(`/cart/items/${itemId}`, { quantity })) as any;
     },
     onMutate: async ({ itemId, quantity }) => {
-      await queryClient.cancelQueries({ queryKey: ["cart"] });
-      const previousCart = queryClient.getQueryData<CartSummary>(["cart"]);
+      await queryClient.cancelQueries(cartQueries.current());
+      const previousCart = queryClient.getQueryData<CartViewModel>(cartQueries.current().queryKey);
 
       if (previousCart) {
-        queryClient.setQueryData<CartSummary>(["cart"], {
+        queryClient.setQueryData<CartViewModel>(cartQueries.current().queryKey, {
           ...previousCart,
           items: previousCart.items.map((item) =>
             item.id === itemId ? { ...item, quantity } : item
@@ -51,20 +51,19 @@ export const useUpdateCartItemMutation = () => {
     },
     onSuccess: (data: any) => {
       if (data?.cart) {
-        queryClient.setQueryData(["cart"], data.cart);
+        queryClient.setQueryData(cartQueries.current().queryKey, data.cart);
       } else {
-        queryClient.invalidateQueries({ queryKey: ["cart"] });
+        queryClient.invalidateQueries(cartQueries.current());
       }
     },
     onError: (err, newTodo, context) => {
       if (context?.previousCart) {
-        queryClient.setQueryData(["cart"], context.previousCart);
+        queryClient.setQueryData(cartQueries.current().queryKey, context.previousCart);
       }
       toast.error("Failed to update cart quantity");
     },
     onSettled: () => {
-      // Re-fetch to guarantee perfect synchronization
-      queryClient.invalidateQueries({ queryKey: ["cart"] });
+      queryClient.invalidateQueries(cartQueries.current());
     },
   });
 };
@@ -74,15 +73,15 @@ export const useRemoveCartItemMutation = () => {
 
   return useMutation({
     mutationFn: async (itemId: string) => {
-      const { data } = await apiClient.delete(`/cart/items/${itemId}`);
-      return data;
+      const { del } = await import("@/api/client");
+      return (await del(`/cart/items/${itemId}`)) as any;
     },
     onMutate: async (itemId) => {
-      await queryClient.cancelQueries({ queryKey: ["cart"] });
-      const previousCart = queryClient.getQueryData<CartSummary>(["cart"]);
+      await queryClient.cancelQueries(cartQueries.current());
+      const previousCart = queryClient.getQueryData<CartViewModel>(cartQueries.current().queryKey);
 
       if (previousCart) {
-        queryClient.setQueryData<CartSummary>(["cart"], {
+        queryClient.setQueryData<CartViewModel>(cartQueries.current().queryKey, {
           ...previousCart,
           items: previousCart.items.filter((item) => item.id !== itemId),
         });
@@ -92,20 +91,20 @@ export const useRemoveCartItemMutation = () => {
     },
     onSuccess: (data: any) => {
       if (data?.cart) {
-        queryClient.setQueryData(["cart"], data.cart);
+        queryClient.setQueryData(cartQueries.current().queryKey, data.cart);
       } else {
-        queryClient.invalidateQueries({ queryKey: ["cart"] });
+        queryClient.invalidateQueries(cartQueries.current());
       }
       toast.success("Item removed");
     },
     onError: (err, itemId, context) => {
       if (context?.previousCart) {
-        queryClient.setQueryData(["cart"], context.previousCart);
+        queryClient.setQueryData(cartQueries.current().queryKey, context.previousCart);
       }
       toast.error("Failed to remove item");
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["cart"] });
+      queryClient.invalidateQueries(cartQueries.current());
     },
   });
 };
@@ -115,14 +114,13 @@ export const useMergeCartMutation = () => {
 
   return useMutation({
     mutationFn: async (items: Array<{ productId: string; variantId?: string | null; quantity: number }>) => {
-      const { data } = await apiClient.post("/cart/merge", { items });
-      return data;
+      return await CartApi.mergeCart(items);
     },
     onSuccess: (data: any) => {
       if (data?.cart) {
-        queryClient.setQueryData(["cart"], data.cart);
+        queryClient.setQueryData(cartQueries.current().queryKey, data.cart);
       } else {
-        queryClient.invalidateQueries({ queryKey: ["cart"] });
+        queryClient.invalidateQueries(cartQueries.current());
       }
     },
     onError: (error) => {

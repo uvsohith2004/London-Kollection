@@ -1,7 +1,7 @@
 import db from "@/db"
 import { brand } from "@/db/schemas"
 import { eq, ilike, or } from "drizzle-orm"
-import { generateSlug } from "../../../core/utils/slug"
+import { generateSlug } from "@/core/utils/slug"
 import { BadRequestError, NotFoundError } from "@/core/errors"
 
 export class BrandsService {
@@ -23,6 +23,14 @@ export class BrandsService {
   async getBrandById(id: string) {
     const item = await db.query.brand.findFirst({
       where: eq(brand.id, id),
+    })
+    if (!item) throw new NotFoundError("Brand not found")
+    return item
+  }
+
+  async getBrandBySlug(slug: string) {
+    const item = await db.query.brand.findFirst({
+      where: eq(brand.slug, slug),
     })
     if (!item) throw new NotFoundError("Brand not found")
     return item

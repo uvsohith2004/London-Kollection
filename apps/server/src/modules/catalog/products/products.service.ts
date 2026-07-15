@@ -1,3 +1,4 @@
+import { NotFoundError, ConflictError } from "@/core/errors/http-errors";
 import db from "@/db"
 import {
   product,
@@ -23,9 +24,10 @@ import {
   gte,
   desc,
   sql,
-  inArray,
   notInArray,
   isNotNull,
+  ilike,
+  inArray,
 } from "drizzle-orm"
 import { HeatmapService } from "../../heatmap/heatmap.service"
 import {
@@ -38,192 +40,28 @@ import { cache, CacheKeys } from "@/cache"
 const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/
 const isValidUUID = (id: string | null | undefined) => id ? uuidRegex.test(id) : false
 
-export function transformProduct(raw: RawProductData | null | undefined) {
-  if (!raw) return null
-
-  const mapImage = (img: any) => {
-    let rawUrl = img.url
-    if (img.asset) {
-      rawUrl = img.asset.webp?.url || img.asset.avif?.url || rawUrl
-    }
-    
-    let url = undefined
-    if (rawUrl) {
-      if (rawUrl.startsWith("/api/media/view/")) {
-        url = rawUrl
-      } else {
-        url = `/api/media/view/${encodeURIComponent(rawUrl)}`
-      }
-    }
-    
-    return {
-      ...img,
-      asset: img.asset || undefined,
-      url,
-    }
-  }
-
-  const options =
-    raw.options?.map((opt: any) => ({
-      name: opt.name,
-      values: opt.values?.map((v: any) => v.value) || [],
-    })) || []
-
-  const variants =
-    raw.variants?.map((v: any) => ({
-      id: v.id,
-      name: v.name || undefined,
-      images: (v.images || []).map(mapImage),
-      sku: v.sku,
-      isDefault: v.isDefault,
-      price: Number(v.price || raw.price),
-      discountValue: Number(v.discountValue || 0),
-      compareAtPrice: v.compareAtPrice ? Number(v.compareAtPrice) : undefined,
-      stock: v.stock,
-      optionValues: v.combinations || {},
-      barcode: v.barcode || undefined,
-      inventoryStatus: v.inventoryStatus || "in_stock",
-      createdAt: v.createdAt,
-      updatedAt: v.updatedAt,
-    })) || []
-
-  const collections =
-    raw.collections?.map((pc: any) => pc.collection).filter(Boolean) || []
-
-  const occasions =
-    raw.occasions?.map((po: any) => po.occasion).filter(Boolean) || []
-
-  return {
-    id: raw.id,
-    title: raw.title,
-    slug: raw.slug,
-    visibility: raw.visibility || "public",
-    shortDescription: raw.shortDescription || undefined,
-    description: raw.description || "",
-    tags: [],
-    brandId: raw.brandId || undefined,
-    brandName: raw.brand?.name || undefined,
-    taxClassId: raw.taxClassId || undefined,
-    taxClassName: raw.taxClass?.name || undefined,
-    productType: raw.productType || undefined,
-    categoryId: raw.categoryId || raw.categories?.[0]?.categoryId || "",
-    collection: collections,
-    occasions,
-    isNewArrival: raw.isNewArrival || false,
-    options,
-    variants,
-    specifications: [],
-    seo: {
-      title: raw.metaTitle || undefined,
-      description: raw.metaDescription || undefined,
-      keywords: raw.seoKeywords || undefined,
-    },
-    averageRating: Number(raw.averageRating || 0),
-    reviewCount: raw.reviewCount || 0,
-    dimensions: raw.dimensions || undefined,
-    price: raw.price ? Number(raw.price) : 0,
-    compareAtPrice: undefined as number | undefined,
-    sku: raw.variants?.[0]?.sku || raw.slug,
-    taxClass: raw.taxClass || undefined,
-    images: (raw.images?.length ? raw.images : (raw.variants?.[0]?.images || [])).map(mapImage),
-    createdAt: raw.createdAt,
-    updatedAt: raw.updatedAt,
-  }
-}
-
-export function transformProductList(raw: RawProductData | null | undefined) {
-  if (!raw) return null
-
-  const mapImage = (img: any) => {
-    let rawUrl = img.url
-    if (img.asset) {
-      rawUrl = img.asset.webp?.url || img.asset.avif?.url || rawUrl
-    }
-    
-    let url = undefined
-    if (rawUrl) {
-      if (rawUrl.startsWith("/api/media/view/")) {
-        url = rawUrl
-      } else {
-        url = `/api/media/view/${encodeURIComponent(rawUrl)}`
-      }
-    }
-    
-    return {
-      ...img,
-      asset: img.asset || undefined,
-      url,
-    }
-  }
-
-  return {
-    id: raw.id,
-    title: raw.title,
-    slug: raw.slug,
-    visibility: raw.visibility || "public",
-    shortDescription: raw.shortDescription || undefined,
-    description: raw.description || "",
-    categoryId: raw.categoryId || raw.categories?.[0]?.categoryId || "",
-    collection: raw.collections?.map((pc: any) => pc.collection).filter(Boolean) || [],
-    occasions: raw.occasions?.map((po: any) => po.occasion).filter(Boolean) || [],
-    isNewArrival: raw.isNewArrival || false,
-    options:
-      raw.options?.map((opt: any) => ({
-        name: opt.name,
-        values: opt.values?.map((v: any) => v.value) || [],
-      })) || [],
-    variants:
-      raw.variants?.map((v: any) => ({
-        id: v.id,
-        name: v.name || undefined,
-        images: (v.images || []).map(mapImage),
-        sku: v.sku,
-        isDefault: v.isDefault,
-        price: Number(v.price || raw.price),
-        discountValue: Number(v.discountValue || 0),
-        compareAtPrice: v.compareAtPrice ? Number(v.compareAtPrice) : undefined,
-        stock: v.stock,
-        optionValues: v.combinations || {},
-        barcode: v.barcode || undefined,
-        inventoryStatus: v.inventoryStatus || "in_stock",
-        createdAt: v.createdAt,
-        updatedAt: v.updatedAt,
-      })) || [],
-    specifications: [],
-    seo: {
-      title: raw.metaTitle || undefined,
-      description: raw.metaDescription || undefined,
-    },
-    metaTitle: raw.metaTitle || undefined,
-    metaDescription: raw.metaDescription || undefined,
-    seoKeywords: Array.isArray(raw.seoKeywords) ? raw.seoKeywords.join(", ") : undefined,
-    averageRating: Number(raw.averageRating || 0),
-    reviewCount: raw.reviewCount || 0,
-    dimensions: raw.dimensions || undefined,
-    weight: raw.dimensions?.weight || raw.weight || undefined,
-    length: raw.dimensions?.length || raw.length || undefined,
-    width: raw.dimensions?.width || raw.width || undefined,
-    height: raw.dimensions?.height || raw.height || undefined,
-    brandId: raw.brandId || undefined,
-    brandName: raw.brand?.name || undefined,
-    productType: raw.productType || undefined,
-    price: raw.price ? Number(raw.price) : 0,
-    compareAtPrice: undefined as number | undefined,
-    discount: raw.discount ? Number(raw.discount) : undefined,
-    taxClassId: raw.taxClassId || undefined,
-    taxClassName: raw.taxClass?.name || undefined,
-    taxClass: raw.taxClass || undefined,
-    published: raw.published || raw.visibility === "public" || false,
-    featured: raw.featured || false,
-    status: raw.published ? "published" : "draft",
-    images: (raw.images?.length ? raw.images : (raw.variants?.[0]?.images || [])).map(mapImage),
-    createdAt: raw.createdAt,
-    updatedAt: raw.updatedAt,
-  }
-}
 
 export class ProductsService {
   async createProduct(data: CreateProductDTO) {
+    const existingSlug = await db.query.product.findFirst({
+      where: eq(product.slug, data.slug),
+    })
+    if (existingSlug) {
+      throw new ConflictError("A product with this slug already exists. Please use a different slug.")
+    }
+
+    if (data.variants && data.variants.length > 0) {
+      const skus = data.variants.map((v) => v.sku).filter(Boolean)
+      if (skus.length > 0) {
+        const existingVariant = await db.query.productVariant.findFirst({
+          where: inArray(productVariant.sku, skus),
+        })
+        if (existingVariant) {
+          throw new ConflictError(`SKU ${existingVariant.sku} already exists. Please use a unique SKU.`)
+        }
+      }
+    }
+
     return await db.transaction(async (tx) => {
       const [insertedProduct] = await tx
         .insert(product)
@@ -236,14 +74,19 @@ export class ProductsService {
           status: data.status || "draft",
           price: data.price,
           discount: data.discount || "0.00",
-          currency: data.currency || "GBP",
+          currency: data.currency || "KWD",
           brandId: isValidUUID(data.brandId) ? data.brandId : null,
           productType: data.productType || null,
           categoryId: data.categoryId || null,
           taxClassId: data.taxClassId || null,
+
+          returnFormId: isValidUUID(data.returnFormId) ? data.returnFormId : null,
+          returnWindowDays: data.returnWindowDays ?? 14,
           published: data.published ?? false,
           featured: data.featured ?? false,
           isNewArrival: data.isNewArrival ?? false,
+          isReturnable: data.isReturnable ?? true,
+          isExchangeable: data.isExchangeable ?? true,
           metaTitle: data.metaTitle,
           metaDescription: data.metaDescription,
           seoKeywords: data.seoKeywords || null,
@@ -353,7 +196,7 @@ export class ProductsService {
   }
 
   async getProductById(id: string) {
-    return await cache.getOrSet(
+    const prod = await cache.getOrSet(
       CacheKeys.product(id),
       async () => {
         const prod = await db.query.product.findFirst({
@@ -369,10 +212,12 @@ export class ProductsService {
             variants: { with: { images: true } },
           },
         })
-        return prod ? transformProduct(prod) : null
+        return prod
       },
       86400 // 24 hours
     )
+    if (!prod) throw new NotFoundError("Product not found")
+    return prod
   }
 
   async getProductBySlug(slug: string) {
@@ -389,7 +234,8 @@ export class ProductsService {
         variants: { with: { images: true } },
       },
     })
-    return prod ? transformProduct(prod) : null
+    if (!prod) throw new NotFoundError("Product not found")
+    return prod
   }
 
   async listProducts(filters: {
@@ -437,7 +283,7 @@ export class ProductsService {
           },
         })
 
-        return results.map(transformProductList)
+        return results
       },
       900 // 15 minutes
     )
@@ -458,7 +304,7 @@ export class ProductsService {
     const conditions = [eq(product.archived, false), eq(product.published, true)]
     
     if (filters.q) {
-      conditions.push(sql`(${product.title} ILIKE ${`%${filters.q}%`})`)
+      conditions.push(ilike(product.title, `%${filters.q}%`))
     }
 
     let productIds: string[] | null = null;
@@ -510,7 +356,7 @@ export class ProductsService {
       },
     })
 
-    return results.map(transformProductList)
+    return results
   }
 
   async getAdminProducts(filters: {
@@ -524,7 +370,7 @@ export class ProductsService {
     const conditions = [eq(product.archived, false)]
     
     if (filters.q) {
-      conditions.push(sql`(${product.title} ILIKE ${`%${filters.q}%`})`)
+      conditions.push(ilike(product.title, `%${filters.q}%`))
     }
 
     const results = await db.query.product.findMany({
@@ -544,7 +390,7 @@ export class ProductsService {
       },
     })
 
-    return results.map(transformProductList)
+    return results
   }
 
   async getFeaturedProducts(limit = 8) {
@@ -557,7 +403,7 @@ export class ProductsService {
         variants: { with: { images: true } },
       },
     })
-    return results.map(transformProductList)
+    return results
   }
 
   async getTrendingProducts(limit = 10) {
@@ -567,14 +413,14 @@ export class ProductsService {
         const topOrdered = await db
           .select({
             productId: orderItem.productId,
-            totalQuantity: sql<number>`sum(${orderItem.quantity})`.mapWith(
+            totalQuantity: sql`sum(${orderItem.quantity})`.mapWith(
               Number
             ),
           })
           .from(orderItem)
           .where(isNotNull(orderItem.productId))
           .groupBy(orderItem.productId)
-          .orderBy(desc(sql<number>`sum(${orderItem.quantity})`))
+          .orderBy(desc(sql`sum(${orderItem.quantity})`.mapWith(Number)))
           .limit(limit)
 
         const orderedProductIds = topOrdered
@@ -622,7 +468,7 @@ export class ProductsService {
           trendingProducts = [...trendingProducts, ...recentProducts]
         }
 
-        return trendingProducts.map(transformProductList)
+        return trendingProducts
       },
       3600 // 1 hour
     )
@@ -651,7 +497,7 @@ export class ProductsService {
             variants: { with: { images: true } },
           },
         })
-        return results.map(transformProductList)
+        return results
       },
       3600 // 1 hour
     )
@@ -836,7 +682,7 @@ export class ProductsService {
       recommendedProducts = [...recommendedProducts, ...fillProducts]
     }
 
-    return recommendedProducts.map(transformProductList)
+    return recommendedProducts
   }
 
   async getRelatedProducts(productId: string, limit = 4) {
@@ -917,7 +763,105 @@ export class ProductsService {
       .map((id) => related.find((p) => p.id === id))
       .filter(Boolean)
 
-    return orderedRelated.map(transformProductList)
+    return orderedRelated
+  }
+
+  async getSuggestions(productId: string, limit = 10) {
+    const current = await db.query.product.findFirst({
+      where: eq(product.id, productId),
+      with: {
+        categories: true,
+        brand: true,
+      },
+    })
+
+    if (!current) return { sameBrand: [], otherBrands: [] }
+
+    const categoryIds = current.categories.map((c) => c.categoryId)
+    if (current.categoryId && !categoryIds.includes(current.categoryId)) {
+      categoryIds.push(current.categoryId)
+    }
+
+    let sameBrand: any[] = []
+    
+    // First try to find products from the exact same brand
+    if (current.brandId) {
+      sameBrand = await db.query.product.findMany({
+        where: and(
+          eq(product.published, true),
+          eq(product.archived, false),
+          eq(product.brandId, current.brandId)
+        ),
+        limit,
+        orderBy: [desc(product.createdAt)],
+        with: { images: true, variants: { with: { images: true } } },
+      })
+    }
+
+    // If no brand products (or only the current product), fallback to same category
+    if (sameBrand.length <= 1) {
+      if (categoryIds.length > 0) {
+        const catMatches = await db.select({ id: productCategory.productId })
+          .from(productCategory)
+          .where(inArray(productCategory.categoryId, categoryIds))
+        
+        const matchedIds = catMatches.map((m) => m.id)
+        
+        const catConditions = []
+        if (matchedIds.length > 0) catConditions.push(inArray(product.id, matchedIds))
+        catConditions.push(inArray(product.categoryId, categoryIds))
+
+        sameBrand = await db.query.product.findMany({
+          where: and(
+            eq(product.published, true),
+            eq(product.archived, false),
+            or(...catConditions)
+          ),
+          limit,
+          orderBy: [desc(product.createdAt)],
+          with: { images: true, variants: { with: { images: true } } },
+        })
+      } else {
+        // Ultimate fallback: just get latest products
+        sameBrand = await db.query.product.findMany({
+          where: and(eq(product.published, true), eq(product.archived, false)),
+          limit,
+          orderBy: [desc(product.createdAt)],
+          with: { images: true, variants: { with: { images: true } } },
+        })
+      }
+    }
+
+    // You May Also Like (Other Brands/Products)
+    let otherBrands = await db.query.product.findMany({
+      where: and(
+        eq(product.published, true),
+        eq(product.archived, false),
+        current.brandId ? sql`${product.brandId} IS NULL OR ${product.brandId} != ${current.brandId}` : undefined
+      ),
+      limit: limit * 2, // Fetch extra so we can filter duplicates in memory
+      orderBy: [desc(product.createdAt)],
+      with: { images: true, variants: { with: { images: true } } },
+    })
+    
+    // Fallback if still empty
+    if (otherBrands.length === 0) {
+      otherBrands = await db.query.product.findMany({
+        where: and(eq(product.published, true), eq(product.archived, false)),
+        limit,
+        orderBy: [desc(product.createdAt)],
+        with: { images: true, variants: { with: { images: true } } },
+      })
+    }
+
+    // Deduplicate between arrays so the same product doesn't appear in both lists
+    const sameBrandIds = new Set(sameBrand.map(p => p.id))
+    otherBrands = otherBrands.filter(p => !sameBrandIds.has(p.id)).slice(0, limit)
+
+    return {
+      sameBrand,
+      otherBrands
+    }
   }
 
   async updateProduct(id: string, data: UpdateProductDTO) {
@@ -937,6 +881,9 @@ export class ProductsService {
       baseData.categoryId = isValidUUID(baseData.categoryId) ? baseData.categoryId : null
       baseData.taxClassId = isValidUUID(baseData.taxClassId) ? baseData.taxClassId : null
 
+      baseData.returnFormId = isValidUUID(baseData.returnFormId) ? baseData.returnFormId : null
+      if (baseData.returnWindowDays === undefined) delete baseData.returnWindowDays
+
       // Map SEO fields
       const updateValues: Record<string, any> = {
         ...baseData,
@@ -949,7 +896,7 @@ export class ProductsService {
         .where(eq(product.id, id))
         .returning()
 
-      if (!updated) return null
+      if (!updated) throw new NotFoundError("Product not found")
 
       // If categories provided, replace
       if (categoryIds) {
@@ -1102,8 +1049,9 @@ export class ProductsService {
       await cache.invalidatePattern("products:trending:*")
       await cache.invalidatePattern("products:newArrivals:*")
       await cache.invalidatePattern("products:search:*")
+      return result
     }
 
-    return result || null
+    throw new NotFoundError("Product not found")
   }
 }

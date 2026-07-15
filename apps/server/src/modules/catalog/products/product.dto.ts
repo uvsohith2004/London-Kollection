@@ -35,6 +35,8 @@ export interface ProductDimensionsDTO {
   weightUnit?: string
 }
 
+
+
 export interface CreateProductDTO {
   title: string
   slug: string
@@ -52,6 +54,8 @@ export interface CreateProductDTO {
   published?: boolean
   featured?: boolean
   isNewArrival?: boolean
+  isReturnable?: boolean
+  isExchangeable?: boolean
   metaTitle?: string
   metaDescription?: string
   seoKeywords?: string[]
@@ -59,6 +63,10 @@ export interface CreateProductDTO {
   categoryIds?: string[]
   collectionIds?: string[]
   occasionIds?: string[]
+
+  returnFormId?: string | null
+  returnWindowDays?: number
+  exchangeWindowDays?: number
   images?: ProductImageDTO[]
   options?: ProductOptionDTO[]
   variants?: ProductVariantDTO[]
@@ -110,6 +118,10 @@ export interface RawProductData {
   seoKeywords?: string[] | null
   averageRating?: number | string | null
   reviewCount?: number | null
+
+  returnFormId?: string | null
+  returnWindowDays?: number
+  exchangeWindowDays?: number
   dimensions?: ProductDimensionsDTO | null
   images?: ProductImageDTO[]
   [key: string]: any

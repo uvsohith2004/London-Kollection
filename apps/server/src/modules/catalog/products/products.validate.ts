@@ -59,6 +59,8 @@ export const CreateProductSchema = z.object({
   published: z.boolean().optional(),
   featured: z.boolean().optional(),
   isNewArrival: z.boolean().optional(),
+  isReturnable: z.boolean().optional(),
+  isExchangeable: z.boolean().optional(),
 
   // SEO
   metaTitle: z.string().optional(),

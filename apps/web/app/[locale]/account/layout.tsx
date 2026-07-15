@@ -27,7 +27,6 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
   const pathname = usePathname()
   const locale = useLocale()
   
-  // Create a locale-stripped pathname for easy comparison
   const strippedPathname = pathname?.replace(new RegExp(`^/${locale}`), '') || '/'
   const isMobileRoot = strippedPathname === "/account"
   
@@ -65,14 +64,13 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
       label: t("groups.preferences"),
       items: [
         { title: t("items.notifications"), href: "/account/notifications", icon: Bell },
-        { title: t("items.reviews"), href: "/account/reviews", icon: Star },
+
       ]
     },
     {
       label: t("groups.support"),
       items: [
         { title: t("items.terms"), href: "/terms", icon: FileText },
-        { title: t("items.faq"), href: "/faq", icon: MessageCircleQuestion },
       ]
     }
   ]

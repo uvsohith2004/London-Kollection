@@ -2,6 +2,7 @@ import { NotFoundError, BadRequestError } from "@/core/errors"
 import db from "@/db"
 import { cart, order, orderItem, orderTimeline, product, productVariant, address } from "@/db/schemas"
 import { eq, and, sql } from "drizzle-orm"
+import { transformProduct } from "@/core/transformers/product.transformer"
 
 export class CheckoutService {
   private async rotateDefaultVariant(tx: any, productId: string, currentVariantId: string) {
@@ -235,15 +236,15 @@ export class CheckoutService {
     )
 
     for (const item of activeCart.items) {
-      let liveProduct = await productsService.getProductById(item.productId)
-      if (liveProduct) liveProduct = await pricingEngine.applyGlobalPricingSingle(liveProduct)
-      if (!liveProduct) continue
+      let rawProduct = await productsService.getProductById(item.productId)
+      if (rawProduct) rawProduct = await pricingEngine.applyGlobalPricingSingle(rawProduct as any)
+      if (!rawProduct) continue
 
       let variantData = null
-      if (item.variantId) variantData = liveProduct.variants?.find(v => v.id === item.variantId)
+      if (item.variantId) variantData = rawProduct.variants?.find((v: any) => v.id === item.variantId)
 
-      const unitPrice = Number(variantData ? variantData.price : liveProduct.price)
-      const compareAtPrice = Number(variantData ? variantData.compareAtPrice : liveProduct.compareAtPrice) || 0
+      const unitPrice = Number(variantData ? variantData.price : rawProduct.price)
+      const compareAtPrice = Number(variantData ? variantData.compareAtPrice : (rawProduct as any).compareAtPrice) || 0
       const itemSubtotal = unitPrice * item.quantity
       subtotal += itemSubtotal
 
@@ -253,9 +254,9 @@ export class CheckoutService {
 
       // Dynamic Tax Logic
       let itemTax = 0
-      if (liveProduct.taxClassId) {
+      if (rawProduct.taxClassId) {
         // Find if there is a tax rule for this product's tax class and the customer's country
-        const rule = countryRules.find(r => r.taxClassId === liveProduct?.taxClassId)
+        const rule = countryRules.find(r => r.taxClassId === rawProduct?.taxClassId)
         if (rule && rule.taxRate) {
           const percentage = Number(rule.taxRate.percentage) || 0
           itemTax = itemSubtotal * (percentage / 100)

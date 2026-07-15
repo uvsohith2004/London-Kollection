@@ -1,9 +1,99 @@
+import { NotFoundError } from "@/core/errors/http-errors";
 import { BadRequestError } from "@/core/errors"
 import db from "@/db"
-import { review, order, orderItem, reviewVote, user } from "@/db/schemas"
-import { eq, and, sql, desc } from "drizzle-orm"
+import { review, order, orderItem, reviewVote, user, product } from "@/db/schemas"
+import { eq, and, sql, desc, inArray } from "drizzle-orm"
 
 export class ReviewsService {
+  async createDraftReview(userId: string, orderId: string, orderItemId: string) {
+    // Check if order is Delivered and belongs to user
+    const orderData = await db.query.order.findFirst({
+      where: and(eq(order.id, orderId), eq(order.userId, userId), inArray(sql`LOWER(${order.status})`, ['delivered', 'completed', 'return requested', 'exchange requested', 'returned', 'refunded', 'exchange completed'])),
+      with: {
+        items: {
+          where: eq(orderItem.id, orderItemId)
+        }
+      }
+    })
+
+    if (!orderData || orderData.items.length === 0) {
+      throw new BadRequestError("Order not found, not delivered, or item not in order.")
+    }
+
+    const item = orderData.items[0]
+
+    // Check if review already exists
+    const existing = await db.query.review.findFirst({
+      where: and(eq(review.orderItemId, orderItemId), eq(review.userId, userId))
+    })
+
+    if (existing) {
+      return existing
+    }
+
+    const prod = await db.query.product.findFirst({
+      where: eq(product.id, item.productId || ""),
+    })
+
+    const [newReview] = await db.insert(review).values({
+      userId,
+      productId: item.productId || "",
+      orderId,
+      orderItemId,
+      variantId: item.variantId || null,
+      rating: 0,
+      isPublished: false,
+      verifiedBuyer: true,
+    }).returning()
+
+    return newReview
+  }
+
+  async getReviewWithForm(reviewId: string, userId: string) {
+    const rev = await db.query.review.findFirst({
+      where: and(eq(review.id, reviewId), eq(review.userId, userId)),
+      with: {
+        product: true
+      }
+    })
+
+    if (!rev) throw new NotFoundError("Review not found")
+    return rev
+  }
+
+  async updateReviewDraft(reviewId: string, userId: string, data: any) {
+    const rev = await db.query.review.findFirst({
+      where: and(eq(review.id, reviewId), eq(review.userId, userId))
+    })
+
+    if (!rev) throw new NotFoundError("Review not found")
+
+
+    const [updated] = await db.update(review).set({
+      rating: data.rating !== undefined ? data.rating : rev.rating,
+      title: data.title !== undefined ? data.title : rev.title,
+      comment: data.comment !== undefined ? data.comment : rev.comment,
+      updatedAt: new Date(),
+    }).where(eq(review.id, reviewId)).returning()
+
+    return updated
+  }
+
+  async submitReview(reviewId: string, userId: string, data: any) {
+    const rev = await this.updateReviewDraft(reviewId, userId, data)
+
+    const [submitted] = await db.update(review).set({
+      isPublished: true,
+      updatedAt: new Date(),
+    }).where(eq(review.id, reviewId)).returning()
+
+    if (submitted && submitted.productId) {
+      await this.updateProductRatingStats(submitted.productId)
+    }
+
+    return submitted
+  }
+
   async addReview(userId: string, data: {
     productId: string
     rating: number
@@ -13,14 +103,14 @@ export class ReviewsService {
   }) {
     // 1. Verify Buyer: Check if the user has a "Delivered" or "Paid" order containing this product
     const buyerOrders = await db
-      .select({ count: sql<number>`count(*)` })
+      .select({ count: sql`count(*)`.mapWith(Number) })
       .from(order)
       .innerJoin(orderItem, eq(order.id, orderItem.orderId))
       .where(
         and(
           eq(order.userId, userId),
           eq(orderItem.productId, data.productId),
-          sql`${order.status} IN ('Paid', 'Packing', 'Ready', 'Shipped', 'Delivered')`
+          inArray(sql`LOWER(${order.status})`, ['delivered', 'completed', 'return requested', 'exchange requested', 'returned', 'refunded', 'exchange completed'])
         )
       )
 
@@ -40,23 +130,25 @@ export class ReviewsService {
         comment: data.comment || null,
         images: data.images ? data.images.map(url => ({ webp: { key: url, url } })) : [],
         verifiedBuyer: true,
-        status: "Approved", // Auto-approving for now to allow immediate visibility
+        isPublished: true,
       })
       .returning()
+
+    await this.updateProductRatingStats(data.productId)
 
     return newReview
   }
 
   async getUserReviewStatus(productId: string, userId: string) {
     const buyerOrders = await db
-      .select({ count: sql<number>`count(*)` })
+      .select({ count: sql`count(*)`.mapWith(Number) })
       .from(order)
       .innerJoin(orderItem, eq(order.id, orderItem.orderId))
       .where(
         and(
           eq(order.userId, userId),
           eq(orderItem.productId, productId),
-          sql`${order.status} IN ('Paid', 'Packing', 'Ready', 'Shipped', 'Delivered')`
+          inArray(sql`LOWER(${order.status})`, ['delivered', 'completed', 'return requested', 'exchange requested', 'returned', 'refunded', 'exchange completed'])
         )
       )
     const isVerifiedBuyer = Number(buyerOrders[0]?.count || 0) > 0
@@ -73,7 +165,7 @@ export class ReviewsService {
   }
 
   async getProductReviews(productId: string, filters: { rating?: string, sort?: string, currentUserId?: string } = {}) {
-    let conditions = [eq(review.productId, productId), eq(review.status, "Approved")]
+    let conditions = [eq(review.productId, productId), eq(review.isPublished, true)]
     
     if (filters.currentUserId) {
       conditions.push(sql`${review.userId} != ${filters.currentUserId}`)
@@ -105,10 +197,10 @@ export class ReviewsService {
           name: user.name,
           image: user.image,
         },
-        voteScore: sql<number>`COALESCE(SUM(${reviewVote.vote}), 0)`.as("vote_score"),
+        voteScore: sql`COALESCE(SUM(${reviewVote.vote}), 0)`.mapWith(Number).as("vote_score"),
         currentUserVote: filters.currentUserId 
-          ? sql<number>`MAX(CASE WHEN ${reviewVote.userId} = ${filters.currentUserId} THEN ${reviewVote.vote} ELSE 0 END)` 
-          : sql<number>`0`
+          ? sql`MAX(CASE WHEN ${reviewVote.userId} = ${filters.currentUserId} THEN ${reviewVote.vote} ELSE 0 END)`.mapWith(Number) 
+          : sql`0`.mapWith(Number)
       })
       .from(review)
       .leftJoin(user, eq(review.userId, user.id))
@@ -145,10 +237,10 @@ export class ReviewsService {
     const stats = await db
       .select({
         rating: review.rating,
-        count: sql<number>`count(*)`,
+        count: sql`count(*)`.mapWith(Number),
       })
       .from(review)
-      .where(and(eq(review.productId, productId), eq(review.status, "Approved")))
+      .where(and(eq(review.productId, productId), eq(review.isPublished, true)))
       .groupBy(review.rating)
 
     let totalReviews = 0
@@ -171,15 +263,15 @@ export class ReviewsService {
     }
   }
 
-  async moderateReview(id: string, approve: boolean) {
-    const status = approve ? "Approved" : "Rejected"
-    const [updated] = await db
-      .update(review)
-      .set({ status, updatedAt: new Date() })
-      .where(eq(review.id, id))
-      .returning()
-    return updated || null
+  async updateProductRatingStats(productId: string) {
+    const summary = await this.getProductRatingSummary(productId);
+    await db.update(product).set({
+      averageRating: summary.averageRating,
+      reviewCount: summary.totalReviews,
+    }).where(eq(product.id, productId));
   }
+
+
 
   async listAllReviewsForAdmin() {
     return await db.select().from(review)

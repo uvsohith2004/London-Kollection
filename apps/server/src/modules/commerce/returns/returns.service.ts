@@ -77,7 +77,7 @@ export class ReturnsService {
     })
   }
 
-  async updateReturnStatus(returnId: string, status: string, adminId: string, adminNotes?: string) {
+  async updateReturnStatus(returnId: string, status: string, adminId: string, adminNotes?: string, pickupDate?: string) {
     return await db.transaction(async (tx) => {
       const currentReturn = await tx.query.returnRequest.findFirst({
         where: eq(returnRequest.id, returnId),
@@ -87,16 +87,23 @@ export class ReturnsService {
         throw new NotFoundError("Return request not found")
       }
 
-      const [updated] = await tx.update(returnRequest).set({
+      const updateData: any = {
         status,
-        adminNotes,
         updatedAt: new Date()
-      }).where(eq(returnRequest.id, returnId)).returning()
+      }
+      
+      if (adminNotes !== undefined) updateData.adminNotes = adminNotes;
+      if (pickupDate) updateData.pickupDate = new Date(pickupDate);
+      if (status.toLowerCase() === 'picked_up') {
+        updateData.pickedUpAt = new Date();
+      }
+
+      const [updated] = await tx.update(returnRequest).set(updateData).where(eq(returnRequest.id, returnId)).returning()
 
       await tx.insert(orderTimeline).values({
         orderId: currentReturn.orderId,
         status: `Return ${status}`,
-        description: `Return request marked as ${status}.${adminNotes ? ` Admin Notes: ${adminNotes}` : ''}`,
+        description: `Return request marked as ${status}.${adminNotes ? ` Admin Notes: ${adminNotes}` : ''}${pickupDate ? ` Pickup scheduled for: ${new Date(pickupDate).toLocaleDateString()}` : ''}`,
         createdBy: adminId,
       })
 
@@ -106,6 +113,45 @@ export class ReturnsService {
               status: 'Returned',
               updatedAt: new Date()
           }).where(eq(order.id, currentReturn.orderId))
+      }
+
+      return updated
+    })
+  }
+
+  async cancelReturnRequest(userId: string, returnId: string) {
+    return await db.transaction(async (tx) => {
+      const currentReturn = await tx.query.returnRequest.findFirst({
+        where: and(eq(returnRequest.id, returnId), eq(returnRequest.userId, userId)),
+      })
+
+      if (!currentReturn) {
+        throw new NotFoundError("Return request not found")
+      }
+
+      if (currentReturn.pickedUpAt || currentReturn.status.toLowerCase() === 'picked_up') {
+        throw new Error("Cannot cancel return request after it has been picked up")
+      }
+
+      const [updated] = await tx.update(returnRequest).set({
+        status: "Cancelled",
+        updatedAt: new Date()
+      }).where(eq(returnRequest.id, returnId)).returning()
+
+      await tx.insert(orderTimeline).values({
+        orderId: currentReturn.orderId,
+        status: "Return Cancelled",
+        description: "User cancelled the return request.",
+        createdBy: userId,
+      })
+
+      // We should probably revert order status if it was "Returned" or something, but typically it would just fall back to delivered, or we just leave it Delivered since return is cancelled.
+      // Wait, if it was Approved, the order status became "Returned".
+      if (currentReturn.status === 'Approved') {
+        await tx.update(order).set({
+          status: 'Delivered',
+          updatedAt: new Date()
+        }).where(eq(order.id, currentReturn.orderId))
       }
 
       return updated

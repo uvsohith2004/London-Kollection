@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useCartQuery } from '@/app/[locale]/cart/queries';
-import { api } from '@/lib/api';
+import { api } from '@/api';
 import { useRouter } from 'next/navigation';
+import { Price } from '@/components/price';
 
 export default function MobileCheckoutLayout() {
   const { data: cartSummary, isLoading: isCartLoading } = useCartQuery();
@@ -72,9 +73,7 @@ export default function MobileCheckoutLayout() {
                   <h3 className="font-medium line-clamp-1">{item.productName}</h3>
                   <p className="text-gray-500">Qty: {item.quantity}</p>
                 </div>
-                <div className="font-medium">
-                  {Number(item.subtotal).toFixed(2)} KWD
-                </div>
+                <Price amount={item.subtotal} className="font-medium" />
               </div>
             ))}
           </div>
@@ -85,7 +84,7 @@ export default function MobileCheckoutLayout() {
         <div className="flex justify-between items-center px-1">
           <span className="text-gray-600">Total Estimate</span>
           <span className="font-bold text-lg">
-             {total.toFixed(2)} KWD
+             <Price amount={total} />
           </span>
         </div>
         <button 

@@ -3,6 +3,7 @@ import { setting } from "@/db/schemas"
 import { eq } from "drizzle-orm"
 import { cache } from "@/cache"
 import { reloadConfig } from "@/config"
+import { ShippingFactory } from "../../shipping/shipping.factory"
 
 export class SettingsService {
   async getSettings() {
@@ -21,6 +22,12 @@ export class SettingsService {
   }
 
   async updateSettings(payload: any) {
+    // Validate shipping provider credentials if being updated
+    if (payload.shippingProvider && payload.shippingCredentials) {
+      const provider = ShippingFactory.getProviderByName(payload.shippingProvider);
+      await provider.validateRequest(payload.shippingCredentials);
+    }
+
     const existing = await db.select().from(setting).where(eq(setting.id, 'global'))
     
     let updatedOrCreated

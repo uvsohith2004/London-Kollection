@@ -37,28 +37,33 @@ export function ProductReviews({ productId }: { productId: string }) {
             <div className="h-50 flex items-center justify-center">
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
-          ) : userStatus?.eligible ? (
-            userStatus.hasReviewed && userStatus.review ? (
-              <div className="flex flex-col gap-4">
-                <h3 className="text-xl font-serif">Your Review</h3>
-                <ReviewCard 
-                  reviewData={{ 
-                    review: userStatus.review, 
-                    user: { id: "me", name: "You", image: null }, 
-                    voteScore: 0, 
-                    currentUserVote: 0 
-                  }} 
-                />
-              </div>
-            ) : (
-              <ReviewForm productId={productId} />
-            )
+          ) : userStatus?.eligible && userStatus.hasReviewed && userStatus.review ? (
+            <div className="flex flex-col gap-4">
+              <h3 className="text-xl font-serif">Your Review</h3>
+              <ReviewCard 
+                reviewData={{ 
+                  review: userStatus.review, 
+                  user: { id: "me", name: "You", image: null }, 
+                  voteScore: 0, 
+                  currentUserVote: 0 
+                }} 
+              />
+            </div>
           ) : (
             <div className="bg-muted/30 border border-border/50 rounded-2xl p-8 h-full flex flex-col items-center justify-center text-center">
               <h3 className="text-xl font-serif mb-2">Write a Review</h3>
-              <p className="text-muted-foreground text-sm max-w-sm">
-                Only customers who have purchased and received this item can leave a review.
+              <p className="text-muted-foreground text-sm max-w-sm mb-4">
+                Reviews can only be submitted after your order has been delivered.
               </p>
+              {userStatus?.eligible ? (
+                <a href="/account/orders" className="text-primary hover:underline text-sm font-semibold uppercase tracking-widest">
+                  Go to Orders
+                </a>
+              ) : (
+                <p className="text-muted-foreground text-xs uppercase tracking-widest">
+                  Purchased this? Check your orders.
+                </p>
+              )}
             </div>
           )}
         </div>

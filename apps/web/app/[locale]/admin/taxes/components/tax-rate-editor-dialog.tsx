@@ -11,7 +11,7 @@ import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { NumberInput } from "@workspace/ui/components/number-input"
-
+import { StickySaveBar } from "@workspace/ui/components/sticky-save-bar"
 import { Card } from "@workspace/ui/components/card"
 import {
   useCreateTaxRateMutation,
@@ -200,33 +200,12 @@ export function TaxRateForm({ initialData, onSuccess, onCancel }: TaxRateFormPro
           </form>
 
 
-        <div className="mt-4 flex items-center justify-end gap-4 border-t border-border/40 pt-6">
-          <Button
-            type="button"
-            variant="outline"
-            className="h-11 px-8 rounded-xl"
-            onClick={onCancel}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            onClick={() => {
-              const formElement = document.getElementById(
-                "tax-rate-form"
-              ) as HTMLFormElement
-              if (formElement) {
-                formElement.requestSubmit()
-              }
-            }}
-            disabled={!form.formState.isDirty || isPending}
-          >
-            {isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
-            {isEditing ? "Update Tax Rate" : "Create Tax Rate"}
-          </Button>
-        </div>
+        <StickySaveBar
+          formId="tax-rate-form"
+          onCancel={onCancel || (() => {})}
+          isPending={isPending}
+          saveActionLabel={isEditing ? "Update Tax Rate" : "Create Tax Rate"}
+        />
       </div>
     </Card>
   )

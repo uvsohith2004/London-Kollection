@@ -2,7 +2,7 @@ import { requireAuth, AppEnv } from "@/core/middleware"
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
 import { CheckoutController } from "./checkout.controller"
-import { PrepareOrderSchema, PreviewOrderSchema } from "./checkout.validate"
+import { PrepareOrderSchema, PreviewOrderSchema } from "@workspace/api-contracts"
 
 export const checkoutRouter = new Hono<AppEnv>()
 const controller = new CheckoutController()

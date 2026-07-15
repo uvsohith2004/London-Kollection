@@ -57,13 +57,36 @@ export class ReviewsController {
     return c.json(ok(items))
   }
 
-  async moderateReview(c: Context) {
+
+
+  async createDraft(c: Context) {
+    const user = c.get("user")!
+    const body = await c.req.json()
+    const { orderId, orderItemId } = body
+    const review = await this.service.createDraftReview(user.id, orderId, orderItemId)
+    return c.json(ok({ review }))
+  }
+
+  async getReviewWithForm(c: Context) {
+    const user = c.get("user")!
     const id = c.req.param("id")!
-    const body = c.req.valid("json" as never) as any
-    const updated = await this.service.moderateReview(id, body.approve)
-    if (!updated) {
-      throw new NotFoundError("Review not found")
-    }
-    return c.json(ok({ review: updated }))
+    const review = await this.service.getReviewWithForm(id, user.id)
+    return c.json(ok({ review }))
+  }
+
+  async updateDraft(c: Context) {
+    const user = c.get("user")!
+    const id = c.req.param("id")!
+    const body = await c.req.json()
+    const review = await this.service.updateReviewDraft(id, user.id, body)
+    return c.json(ok({ review }))
+  }
+
+  async submitReview(c: Context) {
+    const user = c.get("user")!
+    const id = c.req.param("id")!
+    const body = await c.req.json()
+    const review = await this.service.submitReview(id, user.id, body)
+    return c.json(ok({ review }))
   }
 }

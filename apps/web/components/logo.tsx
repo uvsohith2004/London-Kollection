@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { getStoreSettings } from "@/lib/api";
+import { getStoreSettings } from "@/api";
 import { cn } from "@workspace/ui/lib/utils";
 
 interface LogoProps {

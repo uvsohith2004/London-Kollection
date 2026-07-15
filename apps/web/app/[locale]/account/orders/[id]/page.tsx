@@ -1,35 +1,39 @@
-'use client';
-import { use, useState } from 'react';
-import Link from 'next/link';
-import { useOrderDetailsQuery } from './services/queries';
-import { ArrowLeft, Package, CheckCircle2, AlertTriangle, FileText, Download } from 'lucide-react';
+import { serverApi } from '@/api/server';
+import { ArrowLeft, Package, CheckCircle2, AlertTriangle, Archive } from 'lucide-react';
 import { format } from 'date-fns';
-import { cancelOrderApi } from '@/lib/api';
-import { toast } from 'sonner';
+import { Link } from '@/i18n/routing';
 import { OptimizedImage } from '@/components/optimized-image';
+import { OrderActionButtons } from './components/order-actions';
+import { ReviewButton } from './components/review-button';
+import { formatAddressLine } from '@/lib/format-address';
+import { notFound } from 'next/navigation';
+import { OrderItem } from '@workspace/api-contracts';
+import { formatBasePrice } from '@/lib/format-price';
 
-export default function AccountOrderDetailsPage({ params }: { params: Promise<{ id: string; locale: string }> }) {
-  const { id, locale } = use(params);
-  const { data: order, isLoading, refetch } = useOrderDetailsQuery(id);
-  const [isCancelling, setIsCancelling] = useState(false);
-  const [cancelReason, setCancelReason] = useState('');
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  const [showReturnModal, setShowReturnModal] = useState(false);
-  const [reviewModalData, setReviewModalData] = useState<{ productId: string; name: string } | null>(null);
-  const [reviewRating, setReviewRating] = useState(0);
-  const [reviewText, setReviewText] = useState('');
-  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+export default async function AccountOrderDetailsPage({ params }: { params: Promise<{ id: string; locale: string }> }) {
+  const { id } = await params;
+  let order;
+  let returnReq = null;
 
-  if (isLoading)
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">
-        Loading Order Details...
-      </div>
-    );
-  if (!order)
-    return (
-      <div className="min-h-screen flex items-center justify-center text-muted-foreground">Order not found</div>
-    );
+  try {
+    const res = await serverApi.get(`/orders/${id}`);
+    order = res?.order || res;
+  } catch (error) {
+    console.error("Failed to fetch order details", error);
+    notFound();
+  }
+
+  try {
+    const retRes = await serverApi.get(`/returns`);
+    const allReturns = retRes?.data || retRes || [];
+    returnReq = allReturns.find((r: any) => r.orderId === id) || null;
+  } catch (error) {
+    console.error("Failed to fetch return details", error);
+  }
+
+  if (!order) {
+    notFound();
+  }
 
   // --- helpers ---
   const addr: any = order.shippingAddress ?? {};
@@ -46,16 +50,26 @@ export default function AccountOrderDetailsPage({ params }: { params: Promise<{ 
   const subtotal = totalAmount - shippingAmount - taxAmount;
 
   const status = (order.status ?? 'Pending').toLowerCase();
-  const canCancel = ['pending', 'awaiting payment', 'payment verification', 'confirmed'].includes(status);
-  const canReturn = status === 'delivered';
+  const canCancel = 
+    ['pending', 'awaiting payment', 'payment verification', 'confirmed'].includes(status) && 
+    !['paid', 'captured'].includes((order.paymentStatus || '').toLowerCase());
+  const RETURN_WINDOW_DAYS = 14;
+  let daysLeftToReturn = -1;
+  if (status === 'delivered' && order.deliveredAt) {
+    const deliveredDate = new Date(order.deliveredAt);
+    const now = new Date();
+    const diffTime = now.getTime() - deliveredDate.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    daysLeftToReturn = Math.max(0, RETURN_WINDOW_DAYS - diffDays);
+  }
 
-  // Resolve product info from either productMetadata or the joined product relation
-  const getItemTitle = (item: any) =>
-    item.productMetadata?.title || item.product?.title || 'Product';
-  const getItemSlug = (item: any) =>
-    item.productMetadata?.slug || item.product?.slug || null;
+  const canReturn = status === 'delivered' && daysLeftToReturn > 0;
+  const postDeliveryStatuses = ['delivered', 'completed', 'return requested', 'exchange requested', 'returned', 'refunded', 'exchange completed'];
+  const canReview = postDeliveryStatuses.includes(status.replace(/_/g, ' '));
+
+  const getItemTitle = (item: any) => item.productMetadata?.title || item.product?.title || 'Product';
+  const getItemSlug = (item: any) => item.productMetadata?.slug || item.product?.slug || null;
   const getItemImage = (item: any) => {
-    // Try metadata first, then product.images relation
     if (item.productMetadata?.image) return item.productMetadata.image;
     if (item.product?.images?.length > 0) {
       const primary = item.product.images.find((img: any) => img.isPrimary);
@@ -64,443 +78,344 @@ export default function AccountOrderDetailsPage({ params }: { params: Promise<{ 
     return null;
   };
 
-  // --- handlers ---
-  const handleCancelOrder = async () => {
-    if (!cancelReason.trim()) {
-      toast.error('Please provide a reason for cancellation');
-      return;
-    }
-    try {
-      setIsCancelling(true);
-      await cancelOrderApi(order.id, { reason: cancelReason });
-      toast.success('Order cancelled successfully');
-      setShowCancelModal(false);
-      refetch();
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to cancel order');
-    } finally {
-      setIsCancelling(false);
-    }
-  };
+  // --- timeline ---
+  const s = status.replace(/_/g, ' ');
 
-  const handleSubmitReview = async () => {
-    if (reviewRating === 0) {
-      toast.error('Please select a rating');
-      return;
-    }
-    if (!reviewText.trim()) {
-      toast.error('Please write a review');
-      return;
-    }
-    try {
-      setIsSubmittingReview(true);
-      await new Promise((r) => setTimeout(r, 1000));
-      toast.success('Review submitted successfully!');
-      setReviewModalData(null);
-      setReviewRating(0);
-      setReviewText('');
-    } catch {
-      toast.error('Failed to submit review');
-    } finally {
-      setIsSubmittingReview(false);
-    }
-  };
+  let TIMELINE_STAGES: any[] = [
+    { key: 'Pending', label: 'Order Placed' },
+    { key: 'Confirmed', label: 'Confirmed' },
+    { key: 'Packed', label: 'Packed' },
+    { key: 'Shipped', label: 'Shipped' },
+    { key: 'Out for Delivery', label: 'Out for Delivery' },
+    { key: 'Delivered', label: 'Delivered' }
+  ];
+  let resolvedStageIndex = -1;
 
-  // --- timeline (simplified: removed Packed and Preparing) ---
-  const TIMELINE_STAGES = ['Pending', 'Confirmed', 'Shipped', 'Out for Delivery', 'Delivered'];
-  const currentStageIndex = TIMELINE_STAGES.findIndex((s) => s.toLowerCase() === status);
-  const showTimeline = !['cancelled', 'returned', 'refunded'].includes(status);
-  // For statuses that don't map directly (e.g. "preparing", "packed"), clamp to the last known stage
-  const resolvedStageIndex = currentStageIndex >= 0
-    ? currentStageIndex
-    : ['preparing', 'packed', 'processing'].includes(status) ? 1 : -1; // after confirmed
+  if (s === 'pending') resolvedStageIndex = 0;
+  else if (s === 'confirmed' || s === 'preparing') resolvedStageIndex = 1;
+  else if (s === 'packed') resolvedStageIndex = 2;
+  else if (s === 'shipped') resolvedStageIndex = 3;
+  else if (s === 'out for delivery') resolvedStageIndex = 4;
+  else if (s === 'delivered' || s === 'completed' || s === 'return requested' || s === 'exchange requested' || s === 'returned') resolvedStageIndex = 5;
+
+  if (returnReq && returnReq.status?.toLowerCase() !== 'cancelled') {
+    const isExchange = returnReq.returnType?.toLowerCase() === 'exchange';
+    const reqLabel = isExchange ? 'Exchange Requested' : 'Return Requested';
+    TIMELINE_STAGES.push({ key: reqLabel, label: reqLabel });
+    resolvedStageIndex = TIMELINE_STAGES.length - 1;
+
+    if (returnReq.pickupDate) {
+      TIMELINE_STAGES.push({ key: 'Pickup Scheduled', label: 'Pickup Scheduled' });
+      resolvedStageIndex = TIMELINE_STAGES.length - 1;
+    }
+    
+    if (returnReq.pickedUpAt || returnReq.status?.toLowerCase() === 'picked_up') {
+      TIMELINE_STAGES.push({ key: 'Item Picked Up', label: 'Item Picked Up' });
+      resolvedStageIndex = TIMELINE_STAGES.length - 1;
+    }
+
+    if (order.paymentStatus?.toLowerCase() === 'refunded' || returnReq.status?.toLowerCase() === 'refunded') {
+      TIMELINE_STAGES.push({ key: 'Refunded', label: 'Refunded' });
+      resolvedStageIndex = TIMELINE_STAGES.length - 1;
+    } else if (['returned', 'completed', 'approved'].includes(returnReq.status?.toLowerCase())) {
+      const finalLabel = isExchange ? 'Exchange Completed' : 'Returned';
+      TIMELINE_STAGES.push({ key: finalLabel, label: finalLabel });
+      resolvedStageIndex = TIMELINE_STAGES.length - 1;
+    }
+  } else if (s === 'return requested' || s === 'exchange requested') {
+    const reqLabel = s === 'exchange requested' ? 'Exchange Requested' : 'Return Requested';
+    TIMELINE_STAGES.push({ key: reqLabel, label: reqLabel });
+    resolvedStageIndex = TIMELINE_STAGES.length - 1;
+  }
+
+  const showTimeline = !['cancelled'].includes(s);
 
   return (
-    <div className="max-w-4xl py-8 space-y-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <Link
-            href={`/${locale}/account/orders`}
-            className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-4"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Orders
-          </Link>
-          <h1 className="text-3xl font-serif tracking-tight text-foreground">Order {order.orderNumber}</h1>
-          <p className="text-muted-foreground mt-1">
-            Placed on {format(new Date(order.createdAt), "MMMM dd, yyyy 'at' h:mm a")}
-          </p>
-        </div>
-        <div className="flex gap-3 flex-wrap">
-          {canCancel && (
-            <button
-              onClick={() => setShowCancelModal(true)}
-              className="px-4 py-2 border border-destructive/50 text-destructive hover:bg-destructive/10 rounded-md text-sm font-medium transition-colors"
-            >
-              Cancel Order
-            </button>
-          )}
-          {canReturn && (
-            <button
-              onClick={() => setShowReturnModal(true)}
-              className="px-4 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-sm font-medium transition-colors"
-            >
-              Request Return
-            </button>
-          )}
-          <button className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium flex items-center gap-2">
-            <Download className="w-4 h-4" /> Invoice
-          </button>
-        </div>
-      </div>
-
-      {/* Cancellation Banner */}
-      {status === 'cancelled' && (
-        <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 flex gap-4">
-          <AlertTriangle className="w-6 h-6 text-destructive shrink-0" />
+    <div className="min-h-screen bg-background animate-in fade-in duration-500 overflow-x-hidden">
+      <div className="w-full max-w-6xl mx-auto px-4 md:px-8 py-8 lg:py-12">
+        
+        {/* Top Header */}
+        <header className="mb-10 lg:mb-14 pb-8 border-b border-border/40 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
           <div>
-            <h3 className="font-semibold text-destructive">This order was cancelled</h3>
-            <p className="text-sm text-destructive/80 mt-1">
-              Reason: {order.cancellationReason || 'Not specified'}
+            <Link
+              href={`/account/orders` as any}
+              className="inline-flex items-center text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground mb-6 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4 mr-3" />
+              Back to orders
+            </Link>
+            <h1 className="text-3xl md:text-4xl font-bold uppercase tracking-tight text-foreground">
+              Order #{order.orderNumber}
+            </h1>
+            <p className="text-muted-foreground mt-3 text-sm font-medium uppercase tracking-wider">
+              Placed on {order.createdAt ? format(new Date(order.createdAt), "MMMM dd, yyyy") : 'Unknown date'}
             </p>
           </div>
-        </div>
-      )}
+          
+          <OrderActionButtons 
+            orderId={order.id} 
+            orderNumber={order.orderNumber}
+            canCancel={canCancel} 
+            canReturn={canReturn} 
+          />
+        </header>
 
-      {/* Progress Timeline - Redesigned as a horizontal progress bar */}
-      {showTimeline && (
-        <div className="bg-card border rounded-xl p-6 sm:p-8">
-          <h3 className="font-semibold mb-8">Order Progress</h3>
-          <div className="relative">
-            {/* Progress bar background */}
-            <div className="absolute top-4 left-0 right-0 h-0.5 bg-border" />
-            {/* Progress bar filled */}
-            <div
-              className="absolute top-4 left-0 h-0.5 bg-primary transition-all duration-500"
-              style={{
-                width: resolvedStageIndex >= 0
-                  ? `${(resolvedStageIndex / (TIMELINE_STAGES.length - 1)) * 100}%`
-                  : '0%',
-              }}
-            />
-
-            {/* Stage dots */}
-            <div className="relative flex justify-between">
-              {TIMELINE_STAGES.map((stage, idx) => {
-                const isCompleted = resolvedStageIndex >= idx;
-                const isCurrent = resolvedStageIndex === idx;
-                return (
-                  <div key={stage} className="flex flex-col items-center" style={{ width: `${100 / TIMELINE_STAGES.length}%` }}>
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-300 ${
-                        isCurrent
-                          ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/25 scale-110'
-                          : isCompleted
-                            ? 'bg-primary text-primary-foreground border-primary'
-                            : 'bg-card text-muted-foreground border-border'
-                      }`}
-                    >
-                      {isCompleted ? <CheckCircle2 className="w-4 h-4" /> : idx + 1}
-                    </div>
-                    <span
-                      className={`text-xs font-medium mt-3 text-center leading-tight ${
-                        isCurrent ? 'text-primary font-semibold' : isCompleted ? 'text-foreground' : 'text-muted-foreground'
-                      }`}
-                    >
-                      {stage}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+        {/* Cancellation Banners */}
+        {status === 'cancelled' && (
+          <div className="bg-destructive/5 p-6 mb-10 border-l-4 border-destructive rounded-r-lg">
+            <h3 className="font-bold text-destructive text-lg uppercase tracking-wider">Order Cancelled</h3>
+            <p className="font-medium text-destructive/80 mt-1 text-sm uppercase tracking-wider">Reason: {order.cancellationReason || 'Not specified'}</p>
+            {order.paymentStatus?.toLowerCase() === 'paid' && (
+              <p className="font-bold text-destructive mt-3 text-sm uppercase tracking-wider">Refund Pending</p>
+            )}
+            {order.paymentStatus?.toLowerCase() === 'refunded' && (
+              <p className="font-bold text-green-700 mt-3 text-sm uppercase tracking-wider">Refund Processed Successfully</p>
+            )}
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Items */}
-        <div className="lg:col-span-2 space-y-8">
-          <div className="bg-card border rounded-xl overflow-hidden">
-            <div className="px-6 py-4 border-b bg-muted/20">
-              <h3 className="font-semibold">Ordered Items</h3>
-            </div>
-            <div className="divide-y">
-              {(order.items ?? []).map((item: any) => {
+
+        <div className="flex flex-col gap-16 lg:gap-20 max-w-4xl mx-auto w-full">
+          
+          {/* Left Column: Purchased Items */}
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg font-bold uppercase tracking-widest mb-6 pb-4 border-b border-border/30">Purchased Items</h2>
+            <div className="space-y-0">
+              {(order.items ?? []).map((item: OrderItem) => {
                 const title = getItemTitle(item);
                 const slug = getItemSlug(item);
-                const image = getItemImage(item);
+                const itemImage = getItemImage(item);
+                const itemPrice = safeNum(item.priceAtPurchase);
 
                 return (
-                  <div key={item.id} className="p-6 flex flex-col sm:flex-row gap-6">
-                    {/* Product thumbnail - clickable */}
-                    {slug ? (
-                      <Link href={`/${locale}/product/${slug}`} className="shrink-0">
-                        <div className="w-24 h-24 bg-muted rounded-lg overflow-hidden flex items-center justify-center hover:opacity-80 transition-opacity">
-                          {image ? (
-                            <OptimizedImage
-                              asset={image}
-                              alt={title}
-                              width={96}
-                              height={96}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <Package className="w-8 h-8 text-muted-foreground/30" />
-                          )}
-                        </div>
-                      </Link>
-                    ) : (
-                      <div className="w-24 h-24 bg-muted rounded-lg shrink-0 flex items-center justify-center">
-                        {image ? (
-                          <OptimizedImage
-                            asset={image}
-                            alt={title}
-                            width={96}
-                            height={96}
-                            className="w-full h-full object-cover rounded-lg"
-                          />
-                        ) : (
-                          <Package className="w-8 h-8 text-muted-foreground/30" />
-                        )}
-                      </div>
-                    )}
-
-                    {/* Product info - title clickable */}
-                    <div className="flex-1">
-                      {slug ? (
-                        <Link href={`/${locale}/product/${slug}`} className="hover:underline">
-                          <h4 className="font-semibold text-lg">{title}</h4>
-                        </Link>
+                  // FIXED LAYOUT: Using standard flexbox with min-w-0 entirely prevents the vertical stacking bug.
+                  <div key={item.id} className="group flex flex-col sm:flex-row gap-5 sm:gap-8 items-start py-6 border-b border-border/40 last:border-0">
+                    
+                    {/* Item Image */}
+                    <div className="w-24 sm:w-28 shrink-0 aspect-[4/5] bg-muted/20 relative overflow-hidden rounded flex items-center justify-center">
+                      {itemImage ? (
+                        <OptimizedImage
+                          asset={itemImage}
+                          alt={title}
+                          fill
+                          className="object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+                        />
                       ) : (
-                        <h4 className="font-semibold text-lg">{title}</h4>
-                      )}
-                      <p className="text-sm text-muted-foreground mt-1">Quantity: {item.quantity}</p>
-                      {canReturn && (
-                        <button
-                          onClick={() =>
-                            setReviewModalData({
-                              productId: item.productId,
-                              name: title,
-                            })
-                          }
-                          className="mt-3 text-xs font-medium text-primary hover:underline flex items-center gap-1"
-                        >
-                          <FileText className="w-3 h-3" /> Write a Review
-                        </button>
+                        <Package className="w-8 h-8 text-muted-foreground/30" strokeWidth={1} />
                       )}
                     </div>
 
-                    <div className="text-right">
-                      <p className="font-bold text-lg">{safeNum(item.priceAtPurchase).toFixed(3)} KWD</p>
+                    {/* Item Details Container (min-w-0 forces it to respect boundaries) */}
+                    <div className="flex-1 min-w-0 flex flex-col h-full justify-between w-full">
+                      
+                      {/* Top Row: Title & Price */}
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="min-w-0 flex-1">
+                          {slug ? (
+                            <Link href={`/product/${slug}` as any} className="hover:opacity-70 transition-opacity block">
+                              {/* TRUNCATE fixes the character stacking */}
+                              <h3 className="text-sm sm:text-base font-bold text-foreground uppercase tracking-widest truncate" title={title}>
+                                {title}
+                              </h3>
+                            </Link>
+                          ) : (
+                            <h3 className="text-sm sm:text-base font-bold text-foreground uppercase tracking-widest truncate" title={title}>
+                              {title}
+                            </h3>
+                          )}
+                          <p className="text-muted-foreground mt-2 text-xs uppercase tracking-widest font-semibold">
+                            Qty / {item.quantity}
+                          </p>
+                        </div>
+
+                        {/* Price (Stays locked to the right) */}
+                        <div className="shrink-0 text-right hidden sm:block">
+                          <p className="text-base sm:text-lg font-bold tracking-widest">{formatBasePrice(itemPrice)}</p>
+                        </div>
+                      </div>
+
+                      {/* Mobile Price Fallback */}
+                      <div className="sm:hidden mt-2">
+                        <p className="text-base font-bold tracking-widest">{formatBasePrice(itemPrice)}</p>
+                      </div>
+
+                      {/* Order Options */}
+                      <div className="mt-6 flex flex-wrap gap-3">
+                        {canReview && (
+                          <ReviewButton 
+                            productId={item.productId} 
+                            productName={title} 
+                            orderId={order.id}
+                            orderItemId={item.id}
+                            existingReview={(item as any).review}
+                          />
+                        )}
+                        {canReturn && (
+                          <Link
+                            href={`/account/orders/${order.id}/return?item=${item.id}` as any}
+                            className="text-[10px] sm:text-xs font-bold uppercase tracking-widest border border-border/60 px-4 py-2 hover:bg-foreground hover:text-background transition-colors flex items-center justify-center"
+                          >
+                            Return
+                          </Link>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
               })}
               {(!order.items || order.items.length === 0) && (
-                <div className="p-6 text-center text-muted-foreground">No items in this order.</div>
+                <p className="text-muted-foreground font-medium py-8 uppercase tracking-widest text-sm">No items found.</p>
               )}
             </div>
           </div>
-        </div>
 
-        {/* Right Column: Summaries */}
-        <div className="space-y-6">
-          <div className="bg-card border rounded-xl overflow-hidden">
-            <div className="px-6 py-4 border-b bg-muted/20">
-              <h3 className="font-semibold">Order Summary</h3>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span>{subtotal.toFixed(3)} KWD</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Shipping</span>
-                <span>{shippingAmount.toFixed(3)} KWD</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tax</span>
-                <span>{taxAmount.toFixed(3)} KWD</span>
-              </div>
-              {discountAmount > 0 && (
-                <div className="flex justify-between text-sm text-green-600">
-                  <span>Discount</span>
-                  <span>-{discountAmount.toFixed(3)} KWD</span>
+          {/* Additional Details */}
+          <div className="w-full">
+            <div className="space-y-12">
+              
+              {/* Vertical Minimalist Tracking */}
+              {showTimeline && (
+                <div>
+                  <h2 className="text-lg font-bold uppercase tracking-widest mb-6 pb-4 border-b border-border/30">Order Status</h2>
+                  <div className="relative ml-2 space-y-8 py-2">
+                    {/* Continuous vertical line */}
+                    <div className="absolute left-[3px] top-2 bottom-2 w-[1px] bg-border/60 -z-10" />
+                    
+                    {TIMELINE_STAGES.map((stage, idx) => {
+                      const isCompleted = resolvedStageIndex >= idx;
+                      const isCurrent = resolvedStageIndex === idx;
+                      
+                      let stageDate: Date | null = null;
+                      if (stage.key === 'Shipped' && order.shippedAt) stageDate = new Date(order.shippedAt);
+                      else if (stage.key === 'Delivered' && order.deliveredAt) stageDate = new Date(order.deliveredAt);
+                      else if (stage.key === 'Pending' && order.createdAt) stageDate = new Date(order.createdAt);
+                      else if ((stage.key === 'Return Requested' || stage.key === 'Exchange Requested') && returnReq?.createdAt) stageDate = new Date(returnReq.createdAt);
+                      else if (stage.key === 'Pickup Scheduled' && returnReq?.pickupDate) stageDate = new Date(returnReq.pickupDate);
+                      else if (stage.key === 'Item Picked Up' && returnReq?.pickedUpAt) stageDate = new Date(returnReq.pickedUpAt);
+                      else if ((stage.key === 'Returned' || stage.key === 'Exchange Completed' || stage.key === 'Refunded') && returnReq?.updatedAt) stageDate = new Date(returnReq.updatedAt);
+                      
+                      if (!stageDate && order.timeline?.length) {
+                         const timelineEvent = order.timeline.find((t: any) => 
+                           t.status?.toLowerCase().replace(/_/g, ' ') === stage.key.toLowerCase()
+                         );
+                         if (timelineEvent?.createdAt) {
+                           stageDate = new Date(timelineEvent.createdAt);
+                         }
+                      }
+
+                      return (
+                        <div key={stage.key} className="relative pl-10">
+                          {/* Minimalist dot */}
+                          <div
+                            className={`absolute left-0 top-1 w-[7px] h-[7px] rounded-full transition-colors ${
+                              isCurrent
+                                ? 'bg-foreground ring-4 ring-foreground/20'
+                                : isCompleted
+                                  ? 'bg-foreground'
+                                  : 'bg-border'
+                            }`}
+                          />
+                          
+                          <p className={`font-bold uppercase tracking-widest text-xs sm:text-sm leading-none ${isCurrent ? 'text-foreground' : isCompleted ? 'text-foreground/80' : 'text-muted-foreground'}`}>
+                            {stage.label}
+                          </p>
+                          {stageDate ? (
+                            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mt-2">
+                              {format(stageDate, "MMM dd, yyyy · hh:mm a")}
+                            </p>
+                          ) : (
+                            <p className={`text-xs font-bold uppercase tracking-wider mt-2 ${isCompleted ? 'text-muted-foreground/80' : 'text-muted-foreground/40'}`}>
+                              {isCompleted ? 'Completed' : 'Pending'}
+                            </p>
+                          )}
+                          {stage.key === 'Shipped' && !isCompleted && order.estimatedDelivery && (
+                            <p className="text-xs font-bold text-emerald-600/80 uppercase tracking-widest mt-1">Est. Delivery: {format(new Date(order.estimatedDelivery), "MMM dd, yyyy")}</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
-              <div className="pt-4 border-t flex justify-between">
-                <span className="font-semibold">Total</span>
-                <span className="font-bold text-lg">{totalAmount.toFixed(3)} KWD</span>
-              </div>
-            </div>
-          </div>
 
-          <div className="bg-card border rounded-xl overflow-hidden">
-            <div className="px-6 py-4 border-b bg-muted/20">
-              <h3 className="font-semibold">Delivery Details</h3>
-            </div>
-            <div className="p-6 space-y-6">
+              {/* Delivery Details */}
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Contact</p>
-                <p className="text-sm font-medium">{addr.name || '—'}</p>
-                <p className="text-sm text-muted-foreground">{addr.phone || '—'}</p>
+                <h2 className="text-lg font-bold uppercase tracking-widest mb-6 pb-4 border-b border-border/30">Delivery Info</h2>
+                <div className="text-sm text-muted-foreground leading-relaxed font-medium uppercase tracking-wider space-y-1">
+                  <p className="font-bold text-foreground mb-3 tracking-widest">{addr.name || '—'}</p>
+                  <p>{addr.phone || '—'}</p>
+                  <p className="mt-3">
+                    {formatAddressLine(addr.addressLine1)}
+                    {addr.addressLine2 && <><br />{addr.addressLine2}</>}
+                    <br />
+                    {[addr.city, addr.state, addr.postalCode].filter(Boolean).join(', ')}
+                    <br />
+                    {addr.country || ''}
+                  </p>
+                  {addr.landmark && (
+                    <p className="mt-4 pt-4 border-t border-border/30 font-bold">
+                      Landmark: {addr.landmark}
+                    </p>
+                  )}
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Shipping Address</p>
-                <p className="text-sm text-muted-foreground">{addr.addressLine1 || '—'}</p>
-                {addr.addressLine2 && <p className="text-sm text-muted-foreground">{addr.addressLine2}</p>}
-                <p className="text-sm text-muted-foreground">
-                  {[addr.city, addr.state, addr.postalCode].filter(Boolean).join(', ')}
-                </p>
-                <p className="text-sm text-muted-foreground">{addr.country || ''}</p>
-                {addr.landmark && (
-                  <p className="text-sm text-muted-foreground mt-1 italic">Landmark: {addr.landmark}</p>
+
+              {/* Order Summary */}
+              <div className="bg-muted/5 border border-border/50 rounded-xl p-6 lg:p-8">
+                <h2 className="text-base font-bold uppercase tracking-widest mb-6">Summary</h2>
+                <div className="space-y-4 text-xs font-bold uppercase tracking-widest">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Subtotal</span>
+                    <span>{formatBasePrice(subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Shipping</span>
+                    <span>{formatBasePrice(shippingAmount)}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Tax</span>
+                    <span>{formatBasePrice(taxAmount)}</span>
+                  </div>
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>Discount</span>
+                      <span>-{formatBasePrice(discountAmount)}</span>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="mt-6 pt-5 border-t border-border/50 flex justify-between items-center">
+                  <span className="font-bold uppercase tracking-widest text-sm">Total</span>
+                  <span className="text-lg font-bold tracking-widest">{formatBasePrice(totalAmount)}</span>
+                </div>
+
+                <div className="mt-6 pt-5 border-t border-border/50">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Payment Status</p>
+                  <p className={`text-xs font-bold uppercase tracking-widest ${order.paymentStatus === 'Paid' ? 'text-green-600' : 'text-yellow-600'}`}>
+                    {order.paymentStatus || 'Pending'}
+                  </p>
+                </div>
+                
+                {status === 'delivered' && order.deliveredAt && (
+                  <div className="mt-6 pt-5 border-t border-border/50">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Return Window</p>
+                    {daysLeftToReturn > 0 ? (
+                      <p className="text-xs font-bold text-foreground uppercase tracking-widest">
+                        {daysLeftToReturn} {daysLeftToReturn === 1 ? 'Day' : 'Days'} Left to Return
+                      </p>
+                    ) : (
+                      <p className="text-xs font-bold text-destructive uppercase tracking-widest">
+                        Return Window Closed
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
+
             </div>
           </div>
         </div>
       </div>
-
-      {/* Cancel Modal */}
-      {showCancelModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-card w-full max-w-md rounded-xl shadow-xl overflow-hidden">
-            <div className="p-6">
-              <h3 className="text-xl font-bold mb-2">Cancel Order</h3>
-              <p className="text-muted-foreground text-sm mb-6">
-                Are you sure you want to cancel this order? This action cannot be undone.
-              </p>
-
-              <div className="space-y-2 mb-6">
-                <label className="text-sm font-medium">
-                  Reason for cancellation <span className="text-red-500">*</span>
-                </label>
-                <select
-                  className="w-full border rounded-md p-2 bg-background outline-none focus:border-primary"
-                  value={cancelReason}
-                  onChange={(e) => setCancelReason(e.target.value)}
-                >
-                  <option value="">Select a reason...</option>
-                  <option value="Ordered by mistake">Ordered by mistake</option>
-                  <option value="Found a better price">Found a better price</option>
-                  <option value="Wrong address">Wrong address</option>
-                  <option value="Changed my mind">Changed my mind</option>
-                  <option value="Delivery taking too long">Delivery taking too long</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-
-              <div className="flex gap-3 justify-end">
-                <button
-                  onClick={() => setShowCancelModal(false)}
-                  className="px-4 py-2 border rounded-md font-medium text-sm hover:bg-muted"
-                >
-                  Keep Order
-                </button>
-                <button
-                  onClick={handleCancelOrder}
-                  disabled={isCancelling}
-                  className="px-4 py-2 bg-destructive text-destructive-foreground rounded-md font-medium text-sm hover:bg-destructive/90 disabled:opacity-50"
-                >
-                  {isCancelling ? 'Cancelling...' : 'Confirm Cancellation'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Return Modal */}
-      {showReturnModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-card w-full max-w-md rounded-xl shadow-xl overflow-hidden p-6 text-center space-y-4">
-            <Package className="w-12 h-12 text-primary mx-auto" />
-            <h3 className="text-xl font-bold">Request a Return</h3>
-            <p className="text-muted-foreground text-sm">
-              To process your return, please contact our support team at{' '}
-              <a href="tel:97973479" className="font-bold underline">
-                97973479
-              </a>
-              . We will guide you through the process.
-            </p>
-            <div className="pt-4">
-              <button
-                onClick={() => setShowReturnModal(false)}
-                className="px-6 py-2 bg-primary text-primary-foreground rounded-full font-medium"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Review Modal */}
-      {reviewModalData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-card w-full max-w-md rounded-xl shadow-xl overflow-hidden">
-            <div className="p-6">
-              <h3 className="text-xl font-bold mb-1">Write a Review</h3>
-              <p className="text-sm text-muted-foreground mb-6">for {reviewModalData.name}</p>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Rating</label>
-                  <div className="flex gap-1">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button key={star} onClick={() => setReviewRating(star)} className="p-1 focus:outline-none">
-                        <svg
-                          className={`w-8 h-8 transition-colors ${star <= reviewRating ? 'text-amber-500 fill-amber-500' : 'text-muted-foreground/30 fill-transparent'}`}
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                        </svg>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Review</label>
-                  <textarea
-                    rows={4}
-                    className="w-full border rounded-md p-3 bg-background outline-none focus:border-primary resize-none"
-                    placeholder="What did you like or dislike about this product?"
-                    value={reviewText}
-                    onChange={(e) => setReviewText(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-3 justify-end mt-6">
-                <button
-                  onClick={() => {
-                    setReviewModalData(null);
-                    setReviewRating(0);
-                    setReviewText('');
-                  }}
-                  className="px-4 py-2 border rounded-md font-medium text-sm hover:bg-muted"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSubmitReview}
-                  disabled={isSubmittingReview || reviewRating === 0 || !reviewText.trim()}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md font-medium text-sm hover:bg-primary/90 disabled:opacity-50"
-                >
-                  {isSubmittingReview ? 'Submitting...' : 'Submit Review'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Package, ArrowRight, Clock, CheckCircle2, Truck, XCircle } from 'lucide-react';
 import { Button } from '@workspace/ui/components/button';
 import { useTranslations, useLocale } from 'next-intl';
+import { formatBasePrice } from '@/lib/format-price';
 
 export default function TabOrdersLayout({ orders }: { orders: any[] }) {
   const t = useTranslations('Orders');
@@ -63,7 +64,7 @@ export default function TabOrdersLayout({ orders }: { orders: any[] }) {
               <div className="flex items-center justify-between sm:justify-end gap-6 border-t sm:border-t-0 border-border pt-4 sm:pt-0">
                 <div className="text-left sm:text-right">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-0.5 ltr:sm:text-right rtl:sm:text-left">{t('total')}</p>
-                  <p className="text-lg font-medium text-foreground">{Number(order.totalAmount).toFixed(2)} KWD</p>
+                  <p className="text-lg font-medium text-foreground">{formatBasePrice(order.totalAmount)}</p>
                 </div>
                 
                 <Button  variant="outline" size="sm" className="rounded-full border-border">

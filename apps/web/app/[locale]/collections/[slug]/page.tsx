@@ -1,23 +1,19 @@
-import { fetchSearchProducts, fetchAdminCollections } from "@/lib/api"
-import { PremiumProductCard } from "@/app/[locale]/(home)/components/product-card/premium-product-card"
+import { ProductService } from "@/services/product.service"
+import { CollectionService } from "@/services/collection.service"
+import { ProductCard } from "@/components/product-card"
 
 export default async function CollectionDetailsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   
-  // Try to find the collection ID by slug to fetch its products correctly
-  // If the backend doesn't support searching collections by slug directly, we might need to fetch all and filter
-  const collectionsRes = await fetchAdminCollections();
+  const collectionsRes = await CollectionService.getAdminAll();
   const collections = Array.isArray(collectionsRes) ? collectionsRes : (collectionsRes?.items || []);
   const collection = collections.find((c: any) => c.slug === slug);
 
-  // Capitalize name for the header
   const collectionName = collection?.name || slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' ');
 
-  // Fetch products for this specific collection
-  // If we found the collection, use its ID. Otherwise fallback to searching by slug if the API supports it
   const collectionId = collection?.id || slug;
   
-  const response = await fetchSearchProducts({ collectionId, limit: 50 })
+  const response = await ProductService.search({ collectionId, limit: "50" })
   const products = response?.items || []
 
   return (
@@ -40,7 +36,7 @@ export default async function CollectionDetailsPage({ params }: { params: Promis
       {products.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
           {products.map((product: any, idx: number) => (
-            <PremiumProductCard 
+            <ProductCard 
               key={product.id} 
               product={product} 
               priority={idx < 4}

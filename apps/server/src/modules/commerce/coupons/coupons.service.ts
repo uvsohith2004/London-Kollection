@@ -1,3 +1,4 @@
+import { NotFoundError } from "@/core/errors/http-errors";
 import db from "@/db"
 import { coupon } from "@/db/schemas"
 import { eq } from "drizzle-orm"
@@ -45,6 +46,7 @@ export class CouponsService {
     updateData.updatedAt = new Date()
 
     const [item] = await db.update(coupon).set(updateData).where(eq(coupon.id, id)).returning()
+    if (!item) throw new NotFoundError("Coupon not found")
     return item
   }
 }

@@ -2,6 +2,7 @@ import { pgTable, text, uuid, timestamp, index, integer, numeric, jsonb, varchar
 import { relations } from "drizzle-orm"
 import { user } from "./auth.schema"
 import { product, productVariant } from "./products.schema"
+import { review } from "./reviews.schema"
 
 export const order = pgTable(
   "order",
@@ -29,6 +30,10 @@ export const order = pgTable(
     cancelledBy: text("cancelled_by"),
 
     estimatedDelivery: timestamp("estimated_delivery"),
+    shippedAt: timestamp("shipped_at"),
+    deliveredAt: timestamp("delivered_at"),
+    pickupDate: timestamp("pickup_date"),
+    pickedUpAt: timestamp("picked_up_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
@@ -107,6 +112,10 @@ export const orderItemRelations = relations(orderItem, ({ one }) => ({
   variant: one(productVariant, {
     fields: [orderItem.variantId],
     references: [productVariant.id],
+  }),
+  review: one(review, {
+    fields: [orderItem.id],
+    references: [review.orderItemId],
   }),
 }))
 

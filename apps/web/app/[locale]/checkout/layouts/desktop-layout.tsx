@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useCartQuery } from '@/app/[locale]/cart/queries';
-import { api } from '@/lib/api';
+import { api } from '@/api';
 import { useRouter } from 'next/navigation';
+import { Price } from '@/components/price';
 
 export default function DesktopCheckoutLayout() {
   const { data: cartSummary, isLoading: isCartLoading } = useCartQuery();
@@ -82,9 +83,7 @@ export default function DesktopCheckoutLayout() {
                       <h3 className="font-medium text-gray-900">{item.productName}</h3>
                       <p className="text-sm text-gray-500 mt-1">Quantity: {item.quantity}</p>
                     </div>
-                    <div className="font-medium text-right">
-                      {Number(item.subtotal).toFixed(2)} KWD
-                    </div>
+                      <Price amount={item.subtotal} className="font-medium" />
                   </div>
                 </div>
               ))}
@@ -93,7 +92,7 @@ export default function DesktopCheckoutLayout() {
             <div className="border-t mt-8 pt-6 space-y-4 text-sm">
               <div className="flex justify-between text-gray-600">
                 <span>Subtotal</span>
-                <span>{subtotal.toFixed(2)} KWD</span>
+                <span><Price amount={subtotal} /></span>
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Shipping</span>
@@ -101,7 +100,7 @@ export default function DesktopCheckoutLayout() {
               </div>
               <div className="flex justify-between text-lg font-medium pt-4 border-t">
                 <span>Total</span>
-                <span>{total.toFixed(2)} KWD</span>
+                <span><Price amount={total} /></span>
               </div>
             </div>
 

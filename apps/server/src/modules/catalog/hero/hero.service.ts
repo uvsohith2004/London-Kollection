@@ -1,7 +1,8 @@
+import { NotFoundError } from "@/core/errors/http-errors";
 import db from "@/db"
 import { heroCarousel, product, orderItem } from "@/db/schemas"
 import { eq, and, or, isNull, isNotNull, lte, gte, desc, sql, inArray, notInArray } from "drizzle-orm"
-import { transformProductList } from "../products"
+import { transformProductList } from "@/core/transformers/product.transformer"
 
 export class HeroService {
   async addSlide(data: {
@@ -32,19 +33,6 @@ export class HeroService {
     return result
   }
 
-  private formatSlideImage(slide: any) {
-    if (!slide || !slide.image) return slide;
-    let rawUrl = typeof slide.image === 'string' ? slide.image : (slide.image.webp?.url || slide.image.avif?.url || slide.image.url);
-    if (rawUrl && !rawUrl.startsWith("/api/media/view/") && !rawUrl.startsWith("http")) {
-      rawUrl = `/api/media/view/${encodeURIComponent(rawUrl)}`;
-    }
-    
-    return {
-      ...slide,
-      image: typeof slide.image === 'object' ? { ...slide.image, url: rawUrl } : rawUrl
-    };
-  }
-
   async getActiveSlides() {
     const now = new Date()
 
@@ -57,14 +45,14 @@ export class HeroService {
       orderBy: (hero, { asc }) => [asc(hero.sortOrder)],
     })
     
-    return slides.map(this.formatSlideImage);
+    return slides
   }
 
   async listAllSlidesForAdmin() {
     const slides = await db.query.heroCarousel.findMany({
       orderBy: (hero, { asc }) => [asc(hero.sortOrder)],
     })
-    return slides.map(this.formatSlideImage);
+    return slides
   }
 
   async updateSlide(id: string, data: any) {
@@ -76,12 +64,14 @@ export class HeroService {
       })
       .where(eq(heroCarousel.id, id))
       .returning()
-    return result || null
+    if (!result) throw new NotFoundError("Slide not found")
+    return result
   }
 
   async removeSlide(id: string) {
     const [result] = await db.delete(heroCarousel).where(eq(heroCarousel.id, id)).returning()
-    return result || null
+    if (!result) throw new NotFoundError("Slide not found")
+    return result
   }
 
   async reorderSlides(orderList: { id: string; sortOrder: number }[]) {

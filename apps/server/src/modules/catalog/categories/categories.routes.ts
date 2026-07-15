@@ -9,12 +9,13 @@ export const adminCategoriesRouter = new Hono<AppEnv>()
 const controller = new CategoriesController()
 
 // Public Routes
-categoriesRouter.get("/", (c) => controller.list(c))
-categoriesRouter.get("/featured", (c) => controller.getFeatured(c))
-categoriesRouter.get("/recently-updated", (c) => controller.getRecentlyUpdated(c))
+categoriesRouter.get("/", (c) => controller.list(c) as any)
+categoriesRouter.get("/featured", (c) => controller.getFeatured(c) as any)
+categoriesRouter.get("/recently-updated", (c) => controller.getRecentlyUpdated(c) as any)
+categoriesRouter.get("/slug/:slug", (c) => controller.getBySlug(c) as any)
 
 // Admin Routes
 adminCategoriesRouter.use("*", requireRole("admin"))
-adminCategoriesRouter.post("/", zValidator("json", CreateCategorySchema), (c) => controller.create(c))
-adminCategoriesRouter.put("/:id", zValidator("json", UpdateCategorySchema), (c) => controller.update(c))
-adminCategoriesRouter.delete("/:id", (c) => controller.delete(c))
+adminCategoriesRouter.post("/", zValidator("json", CreateCategorySchema) as any, (c) => controller.create(c) as any)
+adminCategoriesRouter.put("/:id", zValidator("json", UpdateCategorySchema) as any, (c) => controller.update(c) as any)
+adminCategoriesRouter.delete("/:id", (c) => controller.delete(c) as any)

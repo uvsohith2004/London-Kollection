@@ -24,9 +24,6 @@ export class AddressesController {
     const id = c.req.param("id")!
     const body = c.req.valid("json" as never) as any
     const item = await this.service.updateAddress(id, user.id, body)
-    if (!item) {
-      throw new NotFoundError("Address not found")
-    }
     return c.json(ok(item))
   }
 
@@ -34,9 +31,6 @@ export class AddressesController {
     const user = c.get("user")!
     const id = c.req.param("id")!
     const item = await this.service.deleteAddress(id, user.id)
-    if (!item) {
-      throw new NotFoundError("Address not found")
-    }
     return c.json(ok(item))
   }
 }

@@ -2,7 +2,7 @@ import { AppEnv } from "@/core/middleware"
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
 import { OccasionsController } from "./occasions.controller"
-import { CreateOccasionSchema, UpdateOccasionSchema } from "./occasions.validate"
+import { CreateOccasionSchema, UpdateOccasionSchema } from "@workspace/api-contracts"
 
 export const adminOccasionsRouter = new Hono<AppEnv>()
 const controller = new OccasionsController()

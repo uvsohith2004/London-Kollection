@@ -11,6 +11,7 @@ import { Heart, Share2 } from "lucide-react";
 import { useWishlistStore } from "@/store/wishlist-store";
 import { ShareModal } from "@/components/share-modal";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
+import { Price } from "@/components/price";
 import {
   Carousel,
   CarouselContent,
@@ -165,11 +166,9 @@ export function MobileProduct({ product, variantId }: { product: Product, varian
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-serif tracking-tight leading-tight">{product.title}</h1>
           <div className="flex items-center gap-3">
-            <span className="text-xl font-medium">${Number(currentPrice).toFixed(2)}</span>
+            <Price amount={currentPrice} className="text-xl font-medium" />
             {Number(product.discount) > 0 && !activeVariant?.price && (
-              <span className="text-sm text-muted-foreground line-through">
-                ${Number(product.price).toFixed(2)}
-              </span>
+              <Price amount={product.price} className="text-sm text-muted-foreground line-through" />
             )}
           </div>
         </div>

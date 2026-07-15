@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiClient } from "@/lib/api/client";
+import { cartQueries } from "@/queries/cart.queries";
 
 export interface CartSummary {
   id: string;
@@ -29,15 +29,6 @@ export interface CartSummary {
 }
 
 export const useCartQuery = () => {
-  return useQuery({
-    queryKey: ["cart"],
-    queryFn: async () => {
-      const { data } = await apiClient.get<{ cart: CartSummary }>("/cart");
-      if (typeof window !== "undefined" && data.cart?.id) {
-        localStorage.setItem("guest-cart-id", data.cart.id);
-      }
-      return data.cart;
-    },
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
+  return useQuery(cartQueries.current());
 };
+

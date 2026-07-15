@@ -8,17 +8,21 @@ import { cn } from "@workspace/ui/lib/utils"
 import { AddToCartButton } from "@/components/add-to-cart-button"
 import type { Product } from "@/types/types"
 import { useWishlistStore } from "@/store/wishlist-store"
+import { Price } from "@/components/price"
+import { useInteractionStore } from "@/stores/use-interaction-store"
 
 interface PremiumProductCardProps {
   product: Product
   className?: string
   priority?: boolean
+  locale?: string
 }
 
 export function PremiumProductCard({
   product,
   className,
   priority = false,
+  locale = "en",
 }: PremiumProductCardProps) {
   const [isImageLoaded, setIsImageLoaded] = useState(false)
 
@@ -26,6 +30,15 @@ export function PremiumProductCard({
   const isInWishlist = useWishlistStore((s) => s.isInWishlist(product.id))
   const addToWishlist = useWishlistStore((s) => s.addToWishlist)
   const removeFromWishlist = useWishlistStore((s) => s.removeFromWishlist)
+
+  const getLocalizedUrl = (path: string) => {
+    const localePrefix = locale === "en" ? "" : `/${locale}`
+    return `${localePrefix}${path}`
+  }
+
+  const handleLinkClick = () => {
+    useInteractionStore.getState().trackProductView(product.id)
+  }
 
   // Derive default variant
   const defaultVariant =
@@ -76,7 +89,8 @@ export function PremiumProductCard({
   return (
     <div className={cn("group flex w-full flex-col gap-3", className)}>
       <Link
-        href={`/products/${product.slug}${variantId ? `/${variantId}` : ""}`}
+        href={getLocalizedUrl(`/products/${product.slug}${variantId ? `/${variantId}` : ""}`)}
+        onClick={handleLinkClick}
         className="relative block aspect-square w-full overflow-hidden rounded-2xl bg-secondary/10 shadow-sm transition-shadow duration-300 hover:shadow-md"
       >
         {/* Image crossfade */}
@@ -113,13 +127,13 @@ export function PremiumProductCard({
           </div>
         )}
 
-        {/* Rating Badge - Always Visible in Corner */}
-        {product.averageRating > 0 && (
-          <div className="pointer-events-none absolute bottom-3 left-3 z-10">
+        {/* Rating Badge - Bottom Left */}
+        {Number(product.averageRating) > 0 && (
+          <div className="absolute bottom-3 left-3 z-10 pointer-events-auto">
             <div className="flex items-center gap-1 rounded-full bg-background/95 px-2 py-1 shadow-sm backdrop-blur-md">
-              <Star className="h-3.5 w-3.5 fill-foreground text-foreground" />
-              <span className="text-[10px] font-semibold text-foreground">
-                {product.averageRating}
+              <Star className="h-3 w-3 fill-foreground text-foreground" />
+              <span className="text-xs font-semibold text-foreground">
+                {Number(product.averageRating).toFixed(1)}
               </span>
             </div>
           </div>
@@ -127,16 +141,16 @@ export function PremiumProductCard({
 
         {/* Badges */}
         <div
-          className="absolute top-3 left-3 z-10 flex flex-col gap-2"
+          className="absolute top-3 left-3 z-10 flex flex-col gap-2 pointer-events-none"
           dir="auto"
         >
           {product.isNewArrival && (
-            <div className="rounded-full bg-background/90 px-3 py-1.5 text-[10px] font-medium tracking-widest text-foreground uppercase shadow-sm backdrop-blur-sm">
+            <div className="rounded-full bg-background/90 px-3 py-1.5 text-[10px] font-medium tracking-widest text-foreground uppercase shadow-sm backdrop-blur-sm pointer-events-auto">
               New
             </div>
           )}
           {isSale && (
-            <div className="rounded-full bg-red-500/95 px-3 py-1.5 text-[10px] font-medium tracking-widest text-white uppercase shadow-sm backdrop-blur-sm">
+            <div className="rounded-full bg-red-500/95 px-3 py-1.5 text-[10px] font-medium tracking-widest text-white uppercase shadow-sm backdrop-blur-sm pointer-events-auto">
               -{discountPercentage}%
             </div>
           )}
@@ -158,7 +172,8 @@ export function PremiumProductCard({
 
       <div className="mt-1 flex flex-col gap-2">
         <Link
-          href={`/products/${product.slug}${variantId ? `/${variantId}` : ""}`}
+          href={getLocalizedUrl(`/products/${product.slug}${variantId ? `/${variantId}` : ""}`)}
+          onClick={handleLinkClick}
           className="transition-colors group-hover:text-foreground/70"
         >
           <h3
@@ -171,16 +186,9 @@ export function PremiumProductCard({
         </Link>
 
         <div className="flex items-center gap-3">
-          <span className="text-lg font-semibold text-foreground" dir="auto">
-            {finalPrice.toFixed(2)} KWD
-          </span>
+          <Price amount={finalPrice} className="text-lg font-semibold text-foreground" />
           {isSale && (
-            <span
-              className="text-sm font-light text-muted-foreground line-through"
-              dir="auto"
-            >
-              {originalPrice.toFixed(2)} KWD
-            </span>
+            <Price amount={originalPrice} className="text-sm font-light text-muted-foreground line-through" />
           )}
         </div>
 

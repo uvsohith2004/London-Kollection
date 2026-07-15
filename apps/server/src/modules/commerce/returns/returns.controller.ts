@@ -1,6 +1,7 @@
 import { ok } from "@/core/response"
 import { Context } from "hono"
 import { ReturnsService } from "./returns.service"
+import { transformReturnRequest, transformReturnRequestList } from "@/core/transformers/return.transformer"
 
 export class ReturnsController {
   private service = new ReturnsService()
@@ -8,18 +9,21 @@ export class ReturnsController {
   async createRequest(c: Context) {
     const user = c.get("user")!
     const body = c.req.valid("json" as never) as any
-    const returnReq = await this.service.createReturnRequest(user.id, body)
+    const rawReq = await this.service.createReturnRequest(user.id, body)
+    const returnReq = transformReturnRequest(rawReq)
     return c.json(ok({ returnRequest: returnReq }))
   }
 
   async getUserReturns(c: Context) {
     const user = c.get("user")!
-    const items = await this.service.getUserReturns(user.id)
+    const rawItems = await this.service.getUserReturns(user.id)
+    const items = rawItems.map(transformReturnRequestList)
     return c.json(ok(items))
   }
 
   async listAdmin(c: Context) {
-    const items = await this.service.listAdminReturns()
+    const rawItems = await this.service.listAdminReturns()
+    const items = rawItems.map(transformReturnRequestList)
     return c.json(ok(items))
   }
 
@@ -27,7 +31,16 @@ export class ReturnsController {
     const admin = c.get("user")!
     const id = c.req.param("id")!
     const body = c.req.valid("json" as never) as any
-    const updated = await this.service.updateReturnStatus(id, body.status, admin.id, body.adminNotes)
+    const rawUpdated = await this.service.updateReturnStatus(id, body.status, admin.id, body.adminNotes, body.pickupDate)
+    const updated = transformReturnRequest(rawUpdated)
+    return c.json(ok({ returnRequest: updated }))
+  }
+
+  async cancelRequest(c: Context) {
+    const user = c.get("user")!
+    const id = c.req.param("id")!
+    const rawUpdated = await this.service.cancelReturnRequest(user.id, id)
+    const updated = transformReturnRequest(rawUpdated)
     return c.json(ok({ returnRequest: updated }))
   }
 }

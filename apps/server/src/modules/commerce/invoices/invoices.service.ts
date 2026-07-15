@@ -5,9 +5,11 @@ import { eq, desc } from "drizzle-orm"
 
 export class InvoicesService {
   async getOrderInvoice(orderId: string) {
-    return await db.query.invoice.findFirst({
+    const result = await db.query.invoice.findFirst({
       where: eq(invoice.orderId, orderId),
     })
+    if (!result) throw new NotFoundError("Invoice not found")
+    return result
   }
 
   async listInvoices() {
@@ -26,7 +28,9 @@ export class InvoicesService {
     }
 
     // Check if invoice already exists
-    const existing = await this.getOrderInvoice(orderId)
+    const existing = await db.query.invoice.findFirst({
+      where: eq(invoice.orderId, orderId),
+    })
     if (existing) {
       return existing
     }

@@ -11,10 +11,10 @@ import {
 import { 
   useAdminCategoriesQuery, 
   useAdminCollectionsQuery, 
-  useAdminOccasionsQuery,
   useAdminBrandsQuery,
-  useTaxClassesQuery
+  useAdminOccasionsQuery
 } from "../../queries"
+import { useSettingsQuery, useTaxClassesQuery } from "../../../queries"
 import { useQuery } from "@tanstack/react-query"
 
 
@@ -49,7 +49,7 @@ const productFormSchema = z.object({
   })),
   metaTitle: z.string().optional(),
   metaDescription: z.string().optional(),
-  seoKeywords: z.string().optional(),
+  seoKeywords: z.array(z.string()).optional(),
   weight: z.coerce.number().optional(),
   length: z.coerce.number().optional(),
   width: z.coerce.number().optional(),
@@ -57,6 +57,10 @@ const productFormSchema = z.object({
   published: z.boolean().default(false),
   featured: z.boolean().default(false),
   isNewArrival: z.boolean().default(false),
+  isReturnable: z.boolean().default(true),
+  isExchangeable: z.boolean().default(true),
+  returnWindowDays: z.coerce.number().min(0).optional().nullable().or(z.literal("")),
+  exchangeWindowDays: z.coerce.number().min(0).optional().nullable().or(z.literal("")),
   status: z.enum(["draft", "published", "archived", "scheduled", "hidden"]).default("draft"),
 })
 
@@ -100,7 +104,7 @@ export function useProductForm(initialData?: any, onSuccess?: () => void) {
       }],
       metaTitle: initialData?.metaTitle || "",
       metaDescription: initialData?.metaDescription || "",
-      seoKeywords: initialData?.seoKeywords || "",
+      seoKeywords: initialData?.seoKeywords || [],
       weight: initialData?.weight,
       length: initialData?.length,
       width: initialData?.width,
@@ -108,7 +112,11 @@ export function useProductForm(initialData?: any, onSuccess?: () => void) {
       published: initialData?.published || initialData?.visibility === "public" || false,
       featured: initialData?.featured ?? false,
       isNewArrival: initialData?.isNewArrival ?? false,
-      status: initialData?.status || (initialData?.published ? "published" : "draft")
+      isReturnable: initialData?.isReturnable ?? true,
+      isExchangeable: initialData?.isExchangeable ?? true,
+      returnWindowDays: initialData?.returnWindowDays ?? "",
+      exchangeWindowDays: initialData?.exchangeWindowDays ?? "",
+      status: initialData?.status || (initialData?.published ? "published" : "draft"),
     }
   })
 
@@ -133,6 +141,8 @@ export function useProductForm(initialData?: any, onSuccess?: () => void) {
 
   const { data: taxesRes, isLoading: isLoadingTaxes } = useTaxClassesQuery()
   const { data: brandsRes, isLoading: isLoadingBrands } = useAdminBrandsQuery()
+  
+  const { data: globalSettingsRes, isLoading: isLoadingGlobalSettings } = useSettingsQuery()
 
   // Global settings for currency
   const { data: settingsRes, isLoading: isLoadingSettings } = useQuery({
@@ -150,7 +160,8 @@ export function useProductForm(initialData?: any, onSuccess?: () => void) {
     taxClasses: taxesRes?.items || [],
     brandOptions: brandsRes?.items || [],
     currency: settingsRes?.currency || "KWD",
-    isLoading: isLoadingCols || isLoadingOccs || isLoadingCats || isLoadingTaxes || isLoadingBrands || isLoadingSettings
+    settings: globalSettingsRes?.data || {},
+    isLoading: isLoadingCols || isLoadingOccs || isLoadingCats || isLoadingTaxes || isLoadingBrands || isLoadingSettings || isLoadingGlobalSettings
   }
 
   // Auto variant generation logic
@@ -294,14 +305,12 @@ export function useProductForm(initialData?: any, onSuccess?: () => void) {
       occasionIds: (data.occasions || []).map((o: any) => o.value || o),
       options: finalOptions,
       variants: finalVariants,
-      brandId: data.brandId,
-      productType: data.productType,
+      brandId: data.brandId || null,
+      productType: data.productType || null,
       discount: data.discount?.toString(),
       metaTitle: data.metaTitle,
       metaDescription: data.metaDescription,
-      seoKeywords: typeof data.seoKeywords === 'string' 
-        ? data.seoKeywords.split(',').map(s => s.trim()).filter(Boolean) 
-        : Array.isArray(data.seoKeywords) ? data.seoKeywords : [],
+      seoKeywords: Array.isArray(data.seoKeywords) ? data.seoKeywords : [],
       dimensions: {
         weight: Number(data.weight || 0),
         length: Number(data.length || 0),
@@ -311,7 +320,11 @@ export function useProductForm(initialData?: any, onSuccess?: () => void) {
         weightUnit: "kg"
       },
       featured: data.featured,
-      isNewArrival: data.isNewArrival
+      isNewArrival: data.isNewArrival,
+      isReturnable: data.isReturnable,
+      isExchangeable: data.isExchangeable,
+      returnWindowDays: data.returnWindowDays === "" || data.returnWindowDays == null || isNaN(Number(data.returnWindowDays)) ? null : Number(data.returnWindowDays),
+      exchangeWindowDays: data.exchangeWindowDays === "" || data.exchangeWindowDays == null || isNaN(Number(data.exchangeWindowDays)) ? null : Number(data.exchangeWindowDays)
     }
 
     if (isEditing) {

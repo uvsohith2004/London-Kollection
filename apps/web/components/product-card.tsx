@@ -1,183 +1,191 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { OptimizedImage, OptimizedImageAsset } from "./optimized-image";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Eye, AlertCircle } from "lucide-react";
-import { cn } from "@workspace/ui/lib/utils";
-import StarRating from "./star-rating";
+import { useState } from "react"
+import { OptimizedImage } from "@/components/optimized-image"
+import Link from "next/link"
+import { Heart, Star } from "lucide-react"
+import { cn } from "@workspace/ui/lib/utils"
+import { AddToCartButton } from "@/components/add-to-cart-button"
+import type { Product } from "@/types/types"
+import { useWishlistStore } from "@/store/wishlist-store"
+import { useInteractionStore } from "@/stores/use-interaction-store"
+import { Price } from "@/components/price"
 
 interface ProductCardProps {
-  product: {
-    id: string;
-    slug?: string;
-    title: string;
-
-    price: string | number;
-    discount?: string | number;
-    images?: { url?: string; asset?: OptimizedImageAsset | null; isPrimary: boolean }[];
-    options?: { name: string; values: { value: string }[] }[];
-    variants?: { id: string; stock: number; isDefault?: boolean }[];
-    isFeatured?: boolean;
-    rating?: number;
-  };
-  className?: string;
+  product: Product
+  className?: string
+  priority?: boolean
+  locale?: string
 }
 
-export function ProductCard({ product, className }: ProductCardProps) {
-  const router = useRouter();
-  const [isHovered, setIsHovered] = useState(false);
-  const [isImageLoaded, setIsImageLoaded] = useState(false);
+export function ProductCard({
+  product,
+  className,
+  priority = false,
+  locale = "en",
+}: ProductCardProps) {
+  const [isImageLoaded, setIsImageLoaded] = useState(false)
 
-  const primaryImage = product.images?.find((img) => img.isPrimary) || product.images?.[0];
+  // Wishlist integration
+  const isInWishlist = useWishlistStore((s) => s.isInWishlist(product.id))
+  const addToWishlist = useWishlistStore((s) => s.addToWishlist)
+  const removeFromWishlist = useWishlistStore((s) => s.removeFromWishlist)
+
+  const getLocalizedUrl = (path: string) => {
+    const localePrefix = locale === "en" ? "" : `/${locale}`
+    return `${localePrefix}${path}`
+  }
+
+  const handleLinkClick = () => {
+    useInteractionStore.getState().trackProductView(product.id)
+  }
+
+  // Derive default variant
+  const defaultVariant =
+    product.variants?.find((v) => v.isDefault) || product.variants?.[0]
+  const price = defaultVariant ? defaultVariant.price : 0
+  const discountValue = defaultVariant ? defaultVariant.discountValue : 0
+  const compareAtPrice = defaultVariant?.compareAtPrice
+  const stock = defaultVariant?.stock ?? 0
+  const variantId = defaultVariant?.id ?? null
+
+  // Images from product level
+  const primaryImgObj = (product as any).images?.find((img: any) => img.isPrimary) || (product as any).images?.[0]
+  const primaryImageUrl = primaryImgObj?.url || primaryImgObj?.asset?.webp?.url || ""
+
+  // Fix: flash sale overridden prices set compareAtPrice in the backend
+  const originalPrice = compareAtPrice ?? (price + discountValue)
+  const finalPrice = (compareAtPrice != null && compareAtPrice > price) ? price : (price - discountValue)
   
-  // Calculate stock
-  const totalStock = product.variants?.reduce((acc, curr) => acc + curr.stock, 0) || 0;
-  const isOutOfStock = product.variants && totalStock === 0;
-  const isLowStock = !isOutOfStock && totalStock > 0 && totalStock <= 5;
-  
-  // Get sizes if available
-  const sizeOption = product.options?.find(o => o.name.toLowerCase() === "size" || o.name.toLowerCase() === "sizes");
-  const sizes = sizeOption ? sizeOption.values.map(v => v.value) : [];
+  const isSale = originalPrice > finalPrice
+  const discountPercentage = isSale
+    ? Math.round(((originalPrice - finalPrice) / originalPrice) * 100)
+    : 0
 
-  const defaultVariant = product.variants?.find((v) => v.isDefault) || product.variants?.[0];
-  const variantId = defaultVariant?.id;
-  const productUrl = `/products/${product.slug || product.id}${variantId ? `/${variantId}` : ""}`;
-
-  const handleProductClick = (e: React.MouseEvent) => {
-    // Prevent default if they clicked the quick view button (we'll let the link handle it naturally otherwise)
-    const target = e.target as HTMLElement;
-    if (target.closest(".quick-view-btn")) {
-      e.preventDefault();
-      router.push(productUrl);
+  const handleWishlist = (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (isInWishlist) {
+      removeFromWishlist(product.id)
+    } else {
+      addToWishlist({
+        id: product.id,
+        productId: product.id,
+        variantId: variantId,
+        productName: product.title,
+        productSlug: product.slug,
+        image: primaryImageUrl,
+        optionValues: defaultVariant?.optionValues,
+        price: finalPrice,
+        compareAtPrice: originalPrice,
+        discountValue: originalPrice - finalPrice,
+        stockStatus: defaultVariant?.inventoryStatus || "in_stock",
+        createdAt: new Date().toISOString(),
+      })
     }
-  };
+  }
 
   return (
-    <motion.div
-      whileHover={{ y: -5 }}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className={cn("group relative flex flex-col h-full", className)}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <Link href={productUrl} className="block relative aspect-square w-full bg-secondary/30 overflow-hidden mb-4" onClick={handleProductClick}>
-        
-        {/* Image */}
-        {primaryImage ? (
+    <div className={cn("group flex w-full flex-col gap-2", className)}>
+      <Link
+        href={getLocalizedUrl(`/products/${product.slug}${variantId ? `/${variantId}` : ""}`)}
+        onClick={handleLinkClick}
+        className="relative block aspect-[3/4] w-full overflow-hidden rounded-xl bg-secondary/10 shadow-sm"
+      >
+        {primaryImgObj ? (
           <OptimizedImage
-            asset={primaryImage.asset || primaryImage.url}
-            fallbackUrl={primaryImage.url}
+            asset={primaryImgObj.asset || primaryImgObj.url}
+            fallbackUrl={primaryImgObj.url}
             alt={product.title}
             fill
             className={cn(
-              "object-cover transition-all duration-700",
-              isImageLoaded ? "opacity-100" : "opacity-0",
-              isHovered && !isOutOfStock ? "scale-105" : ""
+              "object-cover transition-opacity duration-500",
+              isImageLoaded ? "opacity-100" : "opacity-0"
             )}
             onLoad={() => setIsImageLoaded(true)}
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            priority={priority}
+            sizes="(max-width: 768px) 75vw, 45vw"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
+          <div className="flex h-full w-full items-center justify-center text-sm font-light text-muted-foreground/30">
             No image
           </div>
         )}
 
-        {/* Badges Container */}
-        <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
-          {product.isFeatured && (
-            <div className="bg-primary text-primary-foreground text-xs font-medium px-2 py-1 uppercase tracking-widest">
-              Featured
+        {/* Rating on Hover - adapted for mobile */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-start p-3">
+          {Number(product.averageRating) > 0 && (
+          <div className="pointer-events-auto">
+            <div className="flex items-center gap-1 rounded-full bg-background/95 px-2 py-1 shadow-sm backdrop-blur-md">
+              <Star className="h-3 w-3 fill-foreground text-foreground" />
+              <span className="text-[10px] font-semibold text-foreground">
+                {Number(product.averageRating).toFixed(1)}
+              </span>
             </div>
-          )}
-          
-          {Number(product.discount) > 0 && (
-            <div className="bg-destructive text-destructive-foreground text-xs font-bold px-2 py-1 uppercase tracking-widest">
-              Sale
-            </div>
-          )}
-        </div>
+          </div>
+        )}</div>
 
-        {/* Out of stock overlay */}
-        {isOutOfStock && (
-          <div className="absolute inset-0 bg-background/50 backdrop-blur-[2px] flex items-center justify-center z-10">
-            <div className="bg-foreground text-background text-sm font-medium px-4 py-1 uppercase tracking-widest">
-              Out of Stock
-            </div>
+        {/* Badges */}
+        {isSale && (
+          <div
+            className="absolute top-3 left-3 z-10 rounded-full bg-red-500/95 px-2 py-1 text-[10px] font-medium tracking-widest text-white uppercase shadow-sm backdrop-blur-sm"
+            dir="auto"
+          >
+            -{discountPercentage}%
           </div>
         )}
 
-        {/* Quick view button on hover */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: isHovered && !isOutOfStock ? 1 : 0, y: isHovered && !isOutOfStock ? 0 : 10 }}
-          transition={{ duration: 0.2 }}
-          className="absolute bottom-4 right-4 z-20 quick-view-btn"
+        {/* Wishlist Button - ALWAYS VISIBLE */}
+        <button
+          onClick={handleWishlist}
+          className="absolute top-3 right-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-background/95 shadow-sm backdrop-blur-sm transition-transform active:scale-95"
+          aria-label="Add to wishlist"
         >
-          <div className="bg-background/90 backdrop-blur shadow-sm text-foreground p-3 rounded-full hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer">
-            <Eye size={18} strokeWidth={1.5} />
-          </div>
-        </motion.div>
+          <Heart
+            className={cn(
+              "h-4 w-4 transition-colors",
+              isInWishlist ? "fill-red-500 text-red-500" : "text-foreground"
+            )}
+          />
+        </button>
       </Link>
 
-      <div className="flex flex-col gap-2 grow">
-        <Link href={productUrl} className="block">
-          <h3 className="font-serif text-lg tracking-wide group-hover:underline underline-offset-4 decoration-1 line-clamp-1">
-            {product.title}
-          </h3>
-        </Link>
-        
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {Number(product.discount) > 0 ? (
-              <>
-                <span className="font-medium text-destructive">
-                  ${(Number(product.price) - Number(product.discount)).toFixed(2)}
-                </span>
-                <span className="text-muted-foreground line-through text-sm">
-                  ${Number(product.price).toFixed(2)}
-                </span>
-              </>
-            ) : (
-              <span className="font-medium">${Number(product.price).toFixed(2)}</span>
-            )}
-          </div>
+      <div className="mt-1 flex flex-col gap-1.5 px-1">
+        <h3
+          className="line-clamp-1 font-serif text-base text-foreground"
+          dir="auto"
+          title={product.title}
+        >
+          {product.title}
+        </h3>
+
+        <div className="flex items-center justify-start gap-2">
+          <Price amount={finalPrice} className="text-lg font-semibold text-foreground" />
+          {isSale && (
+            <Price amount={originalPrice} className="text-xs font-light text-muted-foreground line-through" />
+          )}
         </div>
 
-        {/* Rating */}
-        <div className="mt-1">
-          <StarRating rating={product.rating || 0} />
+        {/* Add to Bag */}
+        <div className="mt-3 w-full">
+          <AddToCartButton
+            product={{
+              id: product.id,
+              title: product.title,
+              slug: product.slug,
+              price: finalPrice,
+              imageUrl: primaryImageUrl,
+              sku: defaultVariant?.sku || "",
+              optionValues: defaultVariant?.optionValues || {},
+              discountValue: originalPrice - finalPrice,
+              compareAtPrice: originalPrice,
+            }}
+            activeVariantId={variantId}
+            selectedOptions={defaultVariant?.optionValues || {}}
+            stock={stock}
+            className="h-10 text-[10px]"
+          />
         </div>
-
-        {/* Low stock warning */}
-        {isLowStock && (
-          <div className="mt-1 flex items-center text-amber-600 text-xs font-medium uppercase tracking-wider">
-            <AlertCircle size={12} className="mr-1" />
-            Only {totalStock} left
-          </div>
-        )}
-
-        {/* Size chips */}
-        {sizes.length > 0 && !isOutOfStock && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {sizes.slice(0, 4).map((size) => (
-              <span key={size} className="text-xs px-2 py-0.5 border border-border text-muted-foreground bg-muted/10">
-                {size}
-              </span>
-            ))}
-            {sizes.length > 4 && (
-              <span className="text-xs px-2 py-0.5 border border-border text-muted-foreground bg-muted/10">
-                +{sizes.length - 4}
-              </span>
-            )}
-          </div>
-        )}
       </div>
-    </motion.div>
-  );
+    </div>
+  )
 }

@@ -2,7 +2,7 @@ import { requireRole, requireAuth, AppEnv } from "@/core/middleware"
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
 import { CouponsController } from "./coupons.controller"
-import { CreateCouponSchema, UpdateCouponSchema } from "./coupons.validate"
+import { CreateCouponSchema, UpdateCouponSchema } from "@workspace/api-contracts"
 
 // There are no public coupon routes currently (applying is done via cart)
 export const couponsRouter = new Hono<AppEnv>()

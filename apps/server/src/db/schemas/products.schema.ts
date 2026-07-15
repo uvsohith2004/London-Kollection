@@ -12,6 +12,8 @@ import {
 } from "drizzle-orm/pg-core"
 import { relations, sql } from "drizzle-orm"
 import { nanoid } from "nanoid"
+import { returnForm } from "./return-forms.schema"
+
 import type { OptimizedImageAsset } from "./image.schema"
 import { category } from "./categories.schema"
 import { collection } from "./collections.schema"
@@ -51,16 +53,23 @@ export const product = pgTable(
     taxClassId: uuid("tax_class_id").references(() => taxClass.id, {
       onDelete: "set null",
     }),
+    returnFormId: uuid("return_form_id").references(() => returnForm.id, {
+      onDelete: "set null",
+    }),
+    returnWindowDays: integer("return_window_days"),
+    exchangeWindowDays: integer("exchange_window_days"),
 
     // Flags
     published: boolean("published").default(false).notNull(),
     featured: boolean("featured").default(false).notNull(),
     archived: boolean("archived").default(false).notNull(),
     isNewArrival: boolean("is_new_arrival").default(false).notNull(),
+    isReturnable: boolean("is_returnable").default(true).notNull(),
+    isExchangeable: boolean("is_exchangeable").default(true).notNull(),
 
     // Aggregates
-    averageRating: numeric("average_rating", { precision: 3, scale: 3 })
-      .default("0.000")
+    averageRating: numeric("average_rating", { precision: 2, scale: 1 })
+      .default("0.0")
       .notNull(),
     reviewCount: integer("review_count").default(0).notNull(),
 
@@ -261,6 +270,11 @@ export const productRelations = relations(product, ({ one, many }) => ({
   taxClass: one(taxClass, {
     fields: [product.taxClassId],
     references: [taxClass.id],
+  }),
+
+  returnForm: one(returnForm, {
+    fields: [product.returnFormId],
+    references: [returnForm.id],
   }),
   images: many(productImage),
   categories: many(productCategory),

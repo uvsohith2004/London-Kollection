@@ -32,9 +32,9 @@ import {
   createTaxRule,
   updateTaxRule,
   deleteTaxRule,
-} from "@/lib/api"
+} from "@/api"
 import { adminKeys } from "./queries"
-import { apiClient } from "@/lib/api/client"
+import { apiClient } from "@/api/client"
 
 // -- Products --
 export function useCreateProductMutation() {
@@ -55,12 +55,34 @@ export function useUpdateProductMutation() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) =>
       updateProduct(id, data),
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: adminKeys.products() })
+      const previousProducts = queryClient.getQueryData(adminKeys.products())
+      
+      // Attempt optimistic update for list queries if needed
+      queryClient.setQueriesData({ queryKey: adminKeys.products() }, (old: any) => {
+        if (!old) return old
+        const items = Array.isArray(old) ? old : (old?.items || [])
+        return {
+          ...old,
+          items: items.map((item: any) => item.id === id ? { ...item, ...data } : item)
+        }
+      })
+      
+      return { previousProducts }
+    },
     onSuccess: () => {
       toast.success("Product updated successfully")
-      queryClient.invalidateQueries({ queryKey: adminKeys.products() })
     },
-    onError: (error: Error) =>
-      toast.error(error.message || "Failed to update product"),
+    onError: (error: Error, _, context) => {
+      toast.error(error.message || "Failed to update product")
+      if (context?.previousProducts) {
+        queryClient.setQueriesData({ queryKey: adminKeys.products() }, context.previousProducts)
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.products() })
+    }
   })
 }
 
@@ -68,12 +90,33 @@ export function useDeleteProductMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: deleteProduct,
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: adminKeys.products() })
+      const previousProducts = queryClient.getQueryData(adminKeys.products())
+      
+      queryClient.setQueriesData({ queryKey: adminKeys.products() }, (old: any) => {
+        if (!old) return old
+        const items = Array.isArray(old) ? old : (old?.items || [])
+        return {
+          ...old,
+          items: items.filter((item: any) => item.id !== id)
+        }
+      })
+      
+      return { previousProducts }
+    },
     onSuccess: () => {
       toast.success("Product deleted successfully")
-      queryClient.invalidateQueries({ queryKey: adminKeys.products() })
     },
-    onError: (error: Error) =>
-      toast.error(error.message || "Failed to delete product"),
+    onError: (error: Error, _, context) => {
+      toast.error(error.message || "Failed to delete product")
+      if (context?.previousProducts) {
+        queryClient.setQueriesData({ queryKey: adminKeys.products() }, context.previousProducts)
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.products() })
+    }
   })
 }
 
@@ -373,12 +416,32 @@ export function useUpdateOrderStatusMutation() {
       id: string
       data: { status?: string; paymentStatus?: string; description?: string }
     }) => updateAdminOrderStatus(id, data),
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: adminKeys.orders() })
+      const previousOrders = queryClient.getQueryData(adminKeys.orders())
+      
+      queryClient.setQueriesData({ queryKey: adminKeys.orders() }, (old: any) => {
+        if (!old) return old
+        const items = Array.isArray(old) ? old : (old?.items || [])
+        return {
+          ...old,
+          items: items.map((item: any) => item.id === id ? { ...item, ...data } : item)
+        }
+      })
+      return { previousOrders }
+    },
     onSuccess: () => {
       toast.success("Order status updated")
-      queryClient.invalidateQueries({ queryKey: adminKeys.orders() })
     },
-    onError: (error: Error) =>
-      toast.error(error.message || "Failed to update order status"),
+    onError: (error: Error, _, context) => {
+      toast.error(error.message || "Failed to update order status")
+      if (context?.previousOrders) {
+        queryClient.setQueriesData({ queryKey: adminKeys.orders() }, context.previousOrders)
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.orders() })
+    }
   })
 }
 
@@ -391,7 +454,7 @@ export function useUpdateReturnStatusMutation() {
       data,
     }: {
       id: string
-      data: { status: string; resolutionDetails?: string }
+      data: { status: string; resolutionDetails?: string; pickupDate?: string }
     }) => updateAdminReturnStatus(id, data),
     onSuccess: () => {
       toast.success("Return status updated")
@@ -436,7 +499,7 @@ export function useUpdateSettingsMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: any) => {
-      const { updateSettings } = await import("@/lib/api")
+      const { updateSettings } = await import("@/api")
       return updateSettings(payload)
     },
     onSuccess: () => {
@@ -475,7 +538,7 @@ export function useCreateHeroCarouselMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: any) => {
-      const { createHeroCarousel } = await import("@/lib/api")
+      const { createHeroCarousel } = await import("@/api")
       return createHeroCarousel(payload)
     },
     onSuccess: () => {
@@ -491,7 +554,7 @@ export function useUpdateHeroCarouselMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const { updateHeroCarousel } = await import("@/lib/api")
+      const { updateHeroCarousel } = await import("@/api")
       return updateHeroCarousel(id, data)
     },
     onSuccess: () => {
@@ -507,7 +570,7 @@ export function useDeleteHeroCarouselMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
-      const { deleteHeroCarousel } = await import("@/lib/api")
+      const { deleteHeroCarousel } = await import("@/api")
       return deleteHeroCarousel(id)
     },
     onSuccess: () => {
@@ -523,7 +586,7 @@ export function useReorderHeroCarouselMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: any) => {
-      const { reorderHeroCarousel } = await import("@/lib/api")
+      const { reorderHeroCarousel } = await import("@/api")
       return reorderHeroCarousel(payload)
     },
     onSuccess: () => {
@@ -539,7 +602,7 @@ export function useToggleFlashSaleMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: { isActive: boolean; endTime?: string }) => {
-      const { toggleFlashSale } = await import("@/lib/api")
+      const { toggleFlashSale } = await import("@/api")
       return toggleFlashSale(payload)
     },
     onSuccess: () => {
@@ -555,7 +618,7 @@ export function useCreateFlashSaleProductMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: any) => {
-      const { createFlashSaleProduct } = await import("@/lib/api")
+      const { createFlashSaleProduct } = await import("@/api")
       return createFlashSaleProduct(payload)
     },
     onSuccess: () => {
@@ -571,7 +634,7 @@ export function useUpdateFlashSaleProductMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const { updateFlashSaleProduct } = await import("@/lib/api")
+      const { updateFlashSaleProduct } = await import("@/api")
       return updateFlashSaleProduct(id, data)
     },
     onSuccess: () => {
@@ -587,7 +650,7 @@ export function useDeleteFlashSaleProductMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
-      const { deleteFlashSaleProduct } = await import("@/lib/api")
+      const { deleteFlashSaleProduct } = await import("@/api")
       return deleteFlashSaleProduct(id)
     },
     onSuccess: () => {
@@ -604,7 +667,7 @@ export function useSetFeaturedPiecesMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: any) => {
-      const { setFeaturedPieces } = await import("@/lib/api")
+      const { setFeaturedPieces } = await import("@/api")
       return setFeaturedPieces(payload)
     },
     onSuccess: () => {
@@ -620,7 +683,7 @@ export function useUpdateFeaturedPieceStatusMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const { updateFeaturedPieceStatus } = await import("@/lib/api")
+      const { updateFeaturedPieceStatus } = await import("@/api")
       return updateFeaturedPieceStatus(id, data)
     },
     onSuccess: () => {
@@ -635,7 +698,7 @@ export function useSetFeaturedCollectionsMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: any) => {
-      const { setFeaturedCollections } = await import("@/lib/api")
+      const { setFeaturedCollections } = await import("@/api")
       return setFeaturedCollections(payload)
     },
     onSuccess: () => {
@@ -651,7 +714,7 @@ export function useUpdateFeaturedCollectionStatusMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const { updateFeaturedCollectionStatus } = await import("@/lib/api")
+      const { updateFeaturedCollectionStatus } = await import("@/api")
       return updateFeaturedCollectionStatus(id, data)
     },
     onSuccess: () => {
