@@ -45,6 +45,31 @@ export function OverviewDashboard() {
     payload = _data.data
   } else if (_data?.data?.data?.summary) {
     payload = _data.data.data
+  } else {
+    // Backward compatibility for old API shape in production
+    const oldShape = _data?.data?.data?.grossVolume ? _data.data.data : (_data?.data?.grossVolume ? _data.data : _data)
+    if (oldShape?.grossVolume) {
+      payload = {
+        summary: {
+          revenue: { current: oldShape.grossVolume.current || 0, previous: 0, changePercent: oldShape.grossVolume.trend || 0, direction: oldShape.grossVolume.trend >= 0 ? "up" : "down" },
+          orders: { current: oldShape.orders?.current || 0, previous: 0, changePercent: oldShape.orders?.trend || 0, direction: (oldShape.orders?.trend || 0) >= 0 ? "up" : "down" },
+          aov: { current: oldShape.aov?.current || 0, previous: 0, changePercent: oldShape.aov?.trend || 0, direction: (oldShape.aov?.trend || 0) >= 0 ? "up" : "down" },
+          returnRate: { current: oldShape.returnRate?.current || 0, previous: 0, changePercent: oldShape.returnRate?.trend || 0, direction: (oldShape.returnRate?.trend || 0) >= 0 ? "up" : "down" },
+          pendingOrders: 0,
+          lowStockProducts: 0
+        },
+        mainAnalytics: oldShape.revenueChart || [],
+        operations: {},
+        paymentVerification: { verificationQueue: [] },
+        inventory: [],
+        topProducts: [],
+        topCustomers: [],
+        recentOrders: [],
+        timeOfDayStats: [],
+        categoryStats: [],
+        lastUpdatedAt: new Date().toISOString()
+      }
+    }
   }
 
   if (isError || !payload || !payload.summary) {
