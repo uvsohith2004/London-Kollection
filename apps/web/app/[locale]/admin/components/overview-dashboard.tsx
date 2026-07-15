@@ -53,11 +53,16 @@ export function OverviewDashboard() {
     )
   }
 
-  const summary = payload.summary
-  const mainAnalytics = payload.mainAnalytics || []
-  const timeOfDayStats = payload.timeOfDayStats || []
-  const categoryStats = payload.categoryStats || []
-  const { operations, paymentVerification, inventory, topProducts, topCustomers, recentOrders } = payload
+  const summary = payload?.summary || {}
+  const mainAnalytics = payload?.mainAnalytics || []
+  const timeOfDayStats = payload?.timeOfDayStats || []
+  const categoryStats = payload?.categoryStats || []
+  const operations = payload?.operations || {}
+  const paymentVerification = payload?.paymentVerification || { verificationQueue: [] }
+  const inventory = payload?.inventory || []
+  const topProducts = payload?.topProducts || []
+  const topCustomers = payload?.topCustomers || []
+  const recentOrders = payload?.recentOrders || []
 
   const getGreeting = () => {
     const hour = new Date().getHours()
@@ -80,10 +85,10 @@ export function OverviewDashboard() {
 
       {/* SECTION 2: Primary KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <KpiCard title="Revenue" metric={summary.revenue} isCurrency formatCurrency={formatCurrency} />
-        <KpiCard title="Orders" metric={summary.orders} />
-        <KpiCard title="Average Order Value" metric={summary.aov} isCurrency formatCurrency={formatCurrency} />
-        <KpiCard title="Return Rate" metric={summary.returnRate} suffix="%" invertedTrend />
+        <KpiCard title="Revenue" metric={summary?.revenue} isCurrency formatCurrency={formatCurrency} />
+        <KpiCard title="Orders" metric={summary?.orders} />
+        <KpiCard title="Average Order Value" metric={summary?.aov} isCurrency formatCurrency={formatCurrency} />
+        <KpiCard title="Return Rate" metric={summary?.returnRate} suffix="%" invertedTrend />
         
         <Card className="shadow-none border-border/40 rounded-2xl flex flex-col justify-center p-6 bg-card hover:bg-muted/30 transition-colors">
           <div className="text-sm font-medium text-muted-foreground uppercase tracking-widest mb-1">Pending Orders</div>
@@ -192,14 +197,14 @@ export function OverviewDashboard() {
             </CardHeader>
             <CardContent className="p-6">
               <div className="grid grid-cols-2 gap-4">
-                <OperationStat label="Pending" value={operations.pending} />
-                <OperationStat label="Confirmed" value={operations.confirmed} />
-                <OperationStat label="Processing" value={operations.processing} />
-                <OperationStat label="Packed" value={operations.packed} />
-                <OperationStat label="Shipped" value={operations.shipped} className="text-primary" />
-                <OperationStat label="Delivered" value={operations.delivered} />
-                <OperationStat label="Returned" value={operations.returned} className="text-orange-500" />
-                <OperationStat label="Cancelled" value={operations.cancelled} className="text-destructive" />
+                <OperationStat label="Pending" value={operations?.pending || 0} />
+                <OperationStat label="Confirmed" value={operations?.confirmed || 0} />
+                <OperationStat label="Processing" value={operations?.processing || 0} />
+                <OperationStat label="Packed" value={operations?.packed || 0} />
+                <OperationStat label="Shipped" value={operations?.shipped || 0} className="text-primary" />
+                <OperationStat label="Delivered" value={operations?.delivered || 0} />
+                <OperationStat label="Returned" value={operations?.returned || 0} className="text-orange-500" />
+                <OperationStat label="Cancelled" value={operations?.cancelled || 0} className="text-destructive" />
               </div>
             </CardContent>
           </Card>
@@ -215,16 +220,16 @@ export function OverviewDashboard() {
             <CardContent className="p-0">
               <div className="grid grid-cols-2 divide-x divide-border/40 border-b border-border/40">
                 <div className="p-4 text-center hover:bg-muted/20 transition-colors cursor-pointer">
-                  <div className="text-2xl font-light text-primary">{paymentVerification.awaitingVerification}</div>
+                  <div className="text-2xl font-light text-primary">{paymentVerification?.awaitingVerification || 0}</div>
                   <div className="text-xs text-muted-foreground mt-1 uppercase tracking-wider">Awaiting</div>
                 </div>
                 <div className="p-4 text-center hover:bg-muted/20 transition-colors cursor-pointer">
-                  <div className="text-2xl font-light">{paymentVerification.recentlyVerified}</div>
+                  <div className="text-2xl font-light">{paymentVerification?.recentlyVerified || 0}</div>
                   <div className="text-xs text-muted-foreground mt-1 uppercase tracking-wider">Verified</div>
                 </div>
               </div>
               <div className="p-4 flex flex-col gap-3">
-                {paymentVerification.verificationQueue.slice(0, 3).map((item: any) => (
+                {paymentVerification?.verificationQueue?.filter(Boolean).slice(0, 3).map((item: any) => (
                   <div key={item.id} className="flex items-center justify-between group cursor-pointer p-2 rounded-lg hover:bg-muted/40 transition-colors">
                     <div>
                       <div className="text-sm font-medium group-hover:text-primary transition-colors">{item.orderNumber}</div>
@@ -252,11 +257,11 @@ export function OverviewDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0 flex-1 flex flex-col">
-            {inventory.length === 0 ? (
+            {!inventory || inventory.length === 0 ? (
               <div className="p-6 text-center text-sm text-muted-foreground m-auto">No inventory alerts.</div>
             ) : (
               <div className="divide-y divide-border/40">
-                {inventory.slice(0, 6).map((item: any) => (
+                {inventory.filter(Boolean).slice(0, 6).map((item: any) => (
                   <div key={item.id} className="p-4 px-6 flex items-center justify-between hover:bg-muted/20 transition-colors">
                     <div>
                       <div className="text-sm font-medium line-clamp-1">{item.productName}</div>
@@ -291,7 +296,7 @@ export function OverviewDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {topProducts.map((product: any) => (
+                  {topProducts.filter(Boolean).map((product: any) => (
                     <TableRow key={product.id} className="border-border/40 hover:bg-muted/20 transition-colors">
                       <TableCell className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -339,7 +344,7 @@ export function OverviewDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {topCustomers.map((customer: any) => (
+                  {topCustomers.filter(Boolean).map((customer: any) => (
                     <TableRow key={customer.id} className="border-border/40 hover:bg-muted/20 transition-colors">
                       <TableCell className="px-6 py-4">
                         <div className="text-sm font-medium">{customer.name}</div>
@@ -374,7 +379,7 @@ export function OverviewDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recentOrders.slice(0, 5).map((order: any) => (
+                  {recentOrders.filter(Boolean).slice(0, 5).map((order: any) => (
                     <TableRow key={order.id} className="border-border/40 hover:bg-muted/20 transition-colors cursor-pointer group">
                       <TableCell className="px-6 py-4">
                         <div className="text-sm font-medium group-hover:text-primary transition-colors">{order.orderNumber}</div>
@@ -399,6 +404,17 @@ export function OverviewDashboard() {
 }
 
 function KpiCard({ title, metric, isCurrency, formatCurrency, suffix = "", invertedTrend = false }: { title: string, metric: MetricSummary, isCurrency?: boolean, formatCurrency?: any, suffix?: string, invertedTrend?: boolean }) {
+  if (!metric) {
+    return (
+      <Card className="shadow-none border-border/40 rounded-2xl flex flex-col p-6 bg-card hover:bg-muted/30 transition-colors group">
+        <div className="text-sm font-medium text-muted-foreground uppercase tracking-widest mb-4 group-hover:text-foreground transition-colors">{title}</div>
+        <div className="flex items-end justify-between mt-auto">
+          <div className="text-3xl font-light tabular-nums tracking-tight text-muted-foreground">-</div>
+        </div>
+      </Card>
+    )
+  }
+
   const isPositive = metric.direction === "up"
   const showGoodTrend = invertedTrend ? !isPositive : isPositive
   const TrendIcon = isPositive ? TrendingUp : TrendingDown
