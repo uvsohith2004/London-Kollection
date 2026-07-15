@@ -36,7 +36,7 @@ export function OverviewDashboard() {
     )
   }
 
-  if (isError || !data) {
+  if (isError || !data || !data.summary) {
     return (
       <div className="flex min-h-[80vh] items-center justify-center">
         <div className="rounded-3xl border border-destructive/20 bg-destructive/5 p-8 text-center text-destructive">
