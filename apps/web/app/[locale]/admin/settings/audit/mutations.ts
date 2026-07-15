@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { auditApi } from "@/api/index"
+import { auditApi } from "@/api-client/index"
 import { auditKeys } from "./queries"
 
 export function useDeleteAuditLogMutation() {

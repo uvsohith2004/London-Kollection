@@ -34,7 +34,7 @@ import {
   deleteTaxRule,
 } from "@/api"
 import { adminKeys } from "./queries"
-import { apiClient } from "@/api/client"
+import { apiClient } from "@/api-client/client"
 
 // -- Products --
 export function useCreateProductMutation() {

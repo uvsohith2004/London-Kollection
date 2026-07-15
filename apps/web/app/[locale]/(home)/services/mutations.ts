@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query"
-import { apiClient } from "@/api/client"
+import { apiClient } from "@/api-client/client"
 
 
 export function useNewsletterSignupMutation() {

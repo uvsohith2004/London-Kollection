@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { auditApi, AuditLog } from "@/api/index"
+import { auditApi, AuditLog } from "@/api-client/index"
 
 export const auditKeys = {
   all: ["auditLogs"] as const,

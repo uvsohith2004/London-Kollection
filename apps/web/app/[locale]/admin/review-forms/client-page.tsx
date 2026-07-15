@@ -5,7 +5,7 @@ import { Plus, Settings, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table"
 import { ReviewFormBuilder, ReviewFormSchema } from "./components/review-form-builder"
-import { apiClient, post, put, del } from "@/api/client"
+import { apiClient, post, put, del } from "@/api-client/client"
 import { toast } from "sonner"
 import { format } from "date-fns"
 

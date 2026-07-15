@@ -1,4 +1,4 @@
-import { serverApi } from "@/api/server";
+import { serverApi } from "@/api-client/server";
 import ClientPage from "./client-page";
 
 export default async function AdminSettingsTeamPage(props: {

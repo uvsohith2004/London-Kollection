@@ -2,7 +2,7 @@ import { PaginatedOrdersResponse } from "@workspace/api-contracts"
 import OrderTopBar from "./components/orders-topbar"
 import { InfiniteOrderList } from "./components/infinite-order-list"
 import OrderCard from "./components/order-card"
-import { serverApi } from "@/api/server"
+import { serverApi } from "@/api-client/server"
 
 export default async function AccountOrdersPage(props: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const searchParams = await props.searchParams;

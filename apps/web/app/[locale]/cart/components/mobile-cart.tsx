@@ -2,7 +2,7 @@ import { Button } from "@workspace/ui/components/button";
 import { Minus, Plus, Trash2, Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { CartSummary } from "@/api/cart";
+import { CartSummary } from "@/api-client/cart";
 import { cn } from "@workspace/ui/lib/utils";
 import { useRemoveCartItemMutation, useUpdateCartItemMutation } from "../mutations";
 import { useDebounceCallback } from "@/hooks/use-debounce";

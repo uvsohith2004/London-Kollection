@@ -11,7 +11,7 @@ import {
   fetchPersonalizedRecommendations,
   fetchPersonalizedRecommendationsPaginated,
   fetchTrendingProducts,
-} from "@/api/index"
+} from "@/api-client/index"
 import type {
   BannerCarouselResponse,
   ProductsResponse,
@@ -61,7 +61,7 @@ export function useRecentlyUpdatedCategoriesQuery() {
   return useQuery({
     queryKey: ["home", "categories", "recently-updated"],
     queryFn: async () => {
-      const { fetchRecentlyUpdatedCategories } = await import("@/api/index")
+      const { fetchRecentlyUpdatedCategories } = await import("@/api-client/index")
       return fetchRecentlyUpdatedCategories()
     },
     staleTime: 5 * 60 * 1000,

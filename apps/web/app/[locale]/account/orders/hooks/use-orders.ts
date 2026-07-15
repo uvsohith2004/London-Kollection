@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { apiClient } from "@/api/client";
+import { apiClient } from "@/api-client/client";
 import { PaginatedOrdersResponse } from "@workspace/api-contracts";
 
 interface UseOrdersOptions {

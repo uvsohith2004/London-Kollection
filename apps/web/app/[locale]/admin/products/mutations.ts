@@ -13,7 +13,7 @@ import {
   createOccasion,
   updateOccasion,
   deleteOccasion,
-} from "@/api/index"
+} from "@/api-client/index"
 import { adminCatalogKeys } from "./queries"
 
 export function useCreateProductMutation() {

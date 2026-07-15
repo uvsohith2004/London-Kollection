@@ -1,6 +1,6 @@
 "use server"
 
-import { serverApi } from "@/api/server"
+import { serverApi } from "@/api-client/server"
 import { revalidatePath } from "next/cache"
 
 export async function inviteAdmin(userId: string) {

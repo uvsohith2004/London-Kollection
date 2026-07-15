@@ -1,4 +1,4 @@
-import { serverApi } from '@/api/server';
+import { serverApi } from '@/api-client/server';
 import { ArrowLeft, Package, CheckCircle2, AlertTriangle, Archive } from 'lucide-react';
 import { format } from 'date-fns';
 import { Link } from '@/i18n/routing';

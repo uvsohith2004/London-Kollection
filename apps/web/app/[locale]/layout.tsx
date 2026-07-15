@@ -13,7 +13,7 @@ import { CurrencyProvider } from "@/components/providers/currency-provider"
 import { Navbar } from "@/components/navbar"
 import { InteractionTracker } from "@/components/providers/interaction-tracker"
 import { cn } from "@workspace/ui/lib/utils";
-import { serverApi } from "@/api/server"
+import { serverApi } from "@/api-client/server"
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
 const loraHeading = Lora({ subsets: ['latin'], variable: '--font-heading' });
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });

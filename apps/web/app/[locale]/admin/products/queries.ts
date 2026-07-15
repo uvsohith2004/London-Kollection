@@ -4,7 +4,7 @@ import {
   fetchCategories,
   fetchAdminCollections,
   fetchAdminOccasions,
-} from "@/api/index"
+} from "@/api-client/index"
 
 export const adminCatalogKeys = {
   products: ["adminProducts"] as const,

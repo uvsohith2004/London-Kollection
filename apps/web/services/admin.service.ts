@@ -1,4 +1,4 @@
-import { AdminApi } from "@/api/admin";
+import { AdminApi } from "@/api-client/admin";
 
 export const AdminService = {
   getDashboardData: async (range?: string) => AdminApi.getDashboardData(range),

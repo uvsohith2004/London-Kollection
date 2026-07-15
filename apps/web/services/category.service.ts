@@ -1,4 +1,4 @@
-import { CategoryApi } from "@/api/categories";
+import { CategoryApi } from "@/api-client/categories";
 
 export const CategoryService = {
   getAll: async () => {

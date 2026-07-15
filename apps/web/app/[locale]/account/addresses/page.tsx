@@ -1,4 +1,4 @@
-import { serverApi } from "@/api/server";
+import { serverApi } from "@/api-client/server";
 import { AddressHeader } from "./components/AddressHeader";
 import { AddressList } from "./components/AddressList";
 import { AddressFormContainer } from "./components/AddressFormContainer";

@@ -10,7 +10,7 @@ import { Label } from "@workspace/ui/components/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
 import { Card } from "@workspace/ui/components/card";
 import { Switch } from "@workspace/ui/components/switch";
-import { get, post, put, del } from "@/api/client";
+import { get, post, put, del } from "@/api-client/client";
 import { StickySaveBar } from "@workspace/ui/components/sticky-save-bar";
 
 export function ReturnFormBuilder() {

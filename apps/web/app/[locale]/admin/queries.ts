@@ -1,13 +1,13 @@
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { adminQueries } from "@/queries/admin.queries";
-import { CategoryApi } from "@/api/categories";
-import { CollectionApi } from "@/api/collections";
-import { OccasionApi } from "@/api/occasions";
-import { AdminApi } from "@/api/admin";
-import { ReviewApi } from "@/api/reviews";
-import { SettingsApi } from "@/api/settings";
-import { HeroApi } from "@/api/hero";
-import { FlashSaleApi } from "@/api/flash-sale";
+import { CategoryApi } from "@/api-client/categories";
+import { CollectionApi } from "@/api-client/collections";
+import { OccasionApi } from "@/api-client/occasions";
+import { AdminApi } from "@/api-client/admin";
+import { ReviewApi } from "@/api-client/reviews";
+import { SettingsApi } from "@/api-client/settings";
+import { HeroApi } from "@/api-client/hero";
+import { FlashSaleApi } from "@/api-client/flash-sale";
 
 export const adminKeys = adminQueries;
 

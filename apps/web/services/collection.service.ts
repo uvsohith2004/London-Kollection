@@ -1,4 +1,4 @@
-import { CollectionApi } from "@/api/collections";
+import { CollectionApi } from "@/api-client/collections";
 
 export const CollectionService = {
   getFeatured: async () => {

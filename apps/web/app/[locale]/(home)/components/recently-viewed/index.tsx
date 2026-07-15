@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery } from "@tanstack/react-query"
-import { apiClient } from "@/api/client"
+import { apiClient } from "@/api-client/client"
 import { useHomeStore } from "../../store"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { useDevice } from "@/hooks/use-media-query"

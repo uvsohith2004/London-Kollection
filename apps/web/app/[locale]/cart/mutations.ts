@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CartApi } from "@/api/cart";
+import { CartApi } from "@/api-client/cart";
 import { cartQueries } from "@/queries/cart.queries";
 import { toast } from "sonner";
 import { CartViewModel } from "@/services/mappers/cart.mapper";
@@ -31,7 +31,7 @@ export const useUpdateCartItemMutation = () => {
 
   return useMutation({
     mutationFn: async ({ itemId, quantity }: { itemId: string; quantity: number }) => {
-      const { put } = await import("@/api/client");
+      const { put } = await import("@/api-client/client");
       return (await put(`/cart/items/${itemId}`, { quantity })) as any;
     },
     onMutate: async ({ itemId, quantity }) => {
@@ -73,7 +73,7 @@ export const useRemoveCartItemMutation = () => {
 
   return useMutation({
     mutationFn: async (itemId: string) => {
-      const { del } = await import("@/api/client");
+      const { del } = await import("@/api-client/client");
       return (await del(`/cart/items/${itemId}`)) as any;
     },
     onMutate: async (itemId) => {

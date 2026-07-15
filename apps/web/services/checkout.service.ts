@@ -1,5 +1,5 @@
-import { CheckoutApi } from "@/api/checkout";
-import { AddressApi } from "@/api/addresses";
+import { CheckoutApi } from "@/api-client/checkout";
+import { AddressApi } from "@/api-client/addresses";
 
 export const CheckoutService = {
   getPreview: async (payload: { cartId: string; shippingCountryCode: string }) => {

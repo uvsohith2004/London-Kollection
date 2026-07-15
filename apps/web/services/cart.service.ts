@@ -1,4 +1,4 @@
-import { CartApi } from "@/api/cart";
+import { CartApi } from "@/api-client/cart";
 import { mapCartToView, type CartViewModel } from "./mappers/cart.mapper";
 
 export const CartService = {

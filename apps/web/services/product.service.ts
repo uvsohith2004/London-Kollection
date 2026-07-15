@@ -1,4 +1,4 @@
-import { ProductApi } from "@/api/products";
+import { ProductApi } from "@/api-client/products";
 import type { SearchQuery, ProductsResponse, Product } from "@workspace/api-contracts";
 import { mapProductToView, type ProductViewModel } from "./mappers/product.mapper";
 

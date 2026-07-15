@@ -1,4 +1,4 @@
-import { serverApi } from '@/api/server';
+import { serverApi } from '@/api-client/server';
 import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from '@/i18n/routing';

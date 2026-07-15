@@ -1,4 +1,4 @@
-import { CartSummary } from "@/api/cart";
+import { CartSummary } from "@/api-client/cart";
 
 export interface CartViewModel extends CartSummary {
   formattedSubtotal: string;

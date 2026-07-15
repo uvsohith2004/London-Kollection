@@ -1,5 +1,5 @@
 "use server"
-import { serverApi } from "@/api/server"
+import { serverApi } from "@/api-client/server"
 import { PaginatedOrdersResponse } from "@workspace/api-contracts"
 import OrderCard from "./components/order-card"
 import React from "react"

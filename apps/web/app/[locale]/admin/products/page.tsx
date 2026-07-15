@@ -1,4 +1,4 @@
-import { serverApi } from "@/api/server";
+import { serverApi } from "@/api-client/server";
 import { ProductsTab } from "./components/products-tab";
 
 export default async function AdminProductsPage(props: {
