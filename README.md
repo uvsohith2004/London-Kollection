@@ -1,7 +1,6 @@
 # shadcn/ui monorepo template
 
 This is a Next.js monorepo template with shadcn/ui.
-
 ## Adding components
 To add components to your app, run the following command at the root of your `web` app:
 
