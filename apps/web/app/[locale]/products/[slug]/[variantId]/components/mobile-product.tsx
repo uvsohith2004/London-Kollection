@@ -71,6 +71,14 @@ export function MobileProduct({ product, variantId }: { product: Product, varian
     }) || null;
   }, [product.variants, selectedOptions]);
 
+  const displayImages = useMemo(() => {
+    if (!product.images) return [];
+    const variantImages = product.images.filter(
+      (img: any) => img.variantId === activeVariant?.id
+    );
+    return variantImages.length > 0 ? variantImages : product.images;
+  }, [product.images, activeVariant]);
+
   // Determine price to show
   const currentPrice = activeVariant?.price || product.price;
 
@@ -119,20 +127,20 @@ export function MobileProduct({ product, variantId }: { product: Product, varian
       </div>
 
       {/* Image Carousel */}
-      <div className="relative w-full h-[60vh] bg-secondary/30">
-        {product.images && product.images.length > 0 ? (
+      <div className="relative w-full aspect-square bg-secondary/30">
+        {displayImages && displayImages.length > 0 ? (
           <>
             <Carousel setApi={setApi} className="w-full h-full">
               <CarouselContent className="h-full ml-0">
-                {product.images.map((img) => (
-                  <CarouselItem key={img.id} className="relative w-full h-[60vh] pl-0">
+                {displayImages.map((img: any) => (
+                  <CarouselItem key={img.id} className="relative w-full aspect-square pl-0">
                     <OptimizedImage
                       asset={img.asset || img.url}
                       fallbackUrl={img.url}
                       alt={product.title}
                       fill
                       className="object-cover"
-                      priority={img.isPrimary || product.images![0]?.id === img.id}
+                      priority={img.isPrimary || displayImages[0]?.id === img.id}
                     />
                   </CarouselItem>
                 ))}
@@ -140,9 +148,9 @@ export function MobileProduct({ product, variantId }: { product: Product, varian
             </Carousel>
             
             {/* Dot Indicators */}
-            {product.images.length > 1 && (
+            {displayImages.length > 1 && (
               <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-2 z-10">
-                {product.images.map((_, index) => (
+                {displayImages.map((_, index) => (
                   <div
                     key={index}
                     className={cn(

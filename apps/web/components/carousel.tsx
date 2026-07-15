@@ -80,7 +80,7 @@ export function ImageCarousel({ images }: { images: HeroSlide[] }) {
   }, [])
 
   return (
-    <div className={cn("relative w-full overflow-hidden", isDesktop ? "aspect-[16/9]" : "aspect-square")}>
+    <div className={cn("relative w-full overflow-hidden aspect-[16/9]")}>
       
       <Carousel
         setApi={setApi}

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { OptimizedImage } from "@/components/optimized-image"
 import { Product } from "../queries"
 import { Button } from "@workspace/ui/components/button"
@@ -57,6 +57,18 @@ export function TabProduct({ product, variantId }: { product: Product, variantId
     )
   }, [product.variants, selectedOptions])
 
+  const displayImages = useMemo(() => {
+    if (!product.images) return [];
+    const variantImages = product.images.filter(
+      (img: any) => img.variantId === activeVariant?.id
+    );
+    return variantImages.length > 0 ? variantImages : product.images;
+  }, [product.images, activeVariant]);
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [displayImages]);
+
   const currentPrice = activeVariant?.price || product.price
 
   const handleOptionSelect = (optionName: string, value: string) => {
@@ -102,10 +114,10 @@ export function TabProduct({ product, variantId }: { product: Product, variantId
       <div className="flex gap-10">
          {/* Main Image */}
         <div className="relative aspect-4/5 w-1/2 overflow-hidden rounded-2xl bg-secondary/30">
-          {product.images && product.images.length > 0 ? (
+          {displayImages && displayImages.length > 0 && displayImages[activeImageIndex] ? (
             <OptimizedImage
-              asset={product.images[activeImageIndex]!.asset || product.images[activeImageIndex]!.url}
-              fallbackUrl={product.images[activeImageIndex]!.url}
+              asset={displayImages[activeImageIndex]!.asset || displayImages[activeImageIndex]!.url}
+              fallbackUrl={displayImages[activeImageIndex]!.url}
               alt={`${product.title} main view`}
               fill
               className="object-cover"
@@ -217,7 +229,7 @@ export function TabProduct({ product, variantId }: { product: Product, variantId
 
       {/* Thumbnails below image */}
       <div className="no-scrollbar flex gap-4 overflow-x-auto mt-6 pb-2 w-1/2">
-        {product.images?.map((img, i) => (
+        {displayImages?.map((img: any, i: number) => (
           <button
             key={img.id}
             onClick={() => setActiveImageIndex(i)}
