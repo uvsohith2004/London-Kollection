@@ -20,7 +20,6 @@ export default function HomeOrchestrator(props: {
   lookbook: React.ReactNode, 
   whyChooseUs: React.ReactNode,
   customerReviews: React.ReactNode,
-  newsletter: React.ReactNode,
   footer: React.ReactNode
 }) {
   const { isDesktop, isTablet } = useDevice();

@@ -58,7 +58,6 @@ export default function MobileHomeLayout(props: any) {
       </section>
 
       {props.whyChooseUs}
-      {props.newsletter}
       {props.footer}
     </main>
   );

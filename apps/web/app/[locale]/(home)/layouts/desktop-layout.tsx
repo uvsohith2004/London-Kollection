@@ -60,7 +60,6 @@ export default function DesktopHomeLayout(props: any) {
       </section>
 
       {props.whyChooseUs}
-      {props.newsletter}
       {props.footer}
     </main>
   );
