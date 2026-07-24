@@ -1,4 +1,4 @@
-import { NotFoundError, ConflictError } from "@/core/errors/http-errors";
+import { NotFoundError, ConflictError } from "@/core/errors/http-errors"
 import db from "@/db"
 import {
   product,
@@ -22,10 +22,12 @@ import {
   and,
   or,
   gte,
+  lte,
   desc,
   sql,
   notInArray,
   isNotNull,
+  isNull,
   ilike,
   inArray,
 } from "drizzle-orm"
@@ -37,9 +39,10 @@ import {
 } from "./product.dto"
 import { cache, CacheKeys } from "@/cache"
 
-const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/
-const isValidUUID = (id: string | null | undefined) => id ? uuidRegex.test(id) : false
-
+const uuidRegex =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/
+const isValidUUID = (id: string | null | undefined) =>
+  id ? uuidRegex.test(id) : false
 
 export class ProductsService {
   async createProduct(data: CreateProductDTO) {
@@ -47,7 +50,9 @@ export class ProductsService {
       where: eq(product.slug, data.slug),
     })
     if (existingSlug) {
-      throw new ConflictError("A product with this slug already exists. Please use a different slug.")
+      throw new ConflictError(
+        "A product with this slug already exists. Please use a different slug."
+      )
     }
 
     if (data.variants && data.variants.length > 0) {
@@ -57,7 +62,9 @@ export class ProductsService {
           where: inArray(productVariant.sku, skus),
         })
         if (existingVariant) {
-          throw new ConflictError(`SKU ${existingVariant.sku} already exists. Please use a unique SKU.`)
+          throw new ConflictError(
+            `SKU ${existingVariant.sku} already exists. Please use a unique SKU.`
+          )
         }
       }
     }
@@ -80,7 +87,9 @@ export class ProductsService {
           categoryId: data.categoryId || null,
           taxClassId: data.taxClassId || null,
 
-          returnFormId: isValidUUID(data.returnFormId) ? data.returnFormId : null,
+          returnFormId: isValidUUID(data.returnFormId)
+            ? data.returnFormId
+            : null,
           returnWindowDays: data.returnWindowDays ?? 14,
           published: data.published ?? false,
           featured: data.featured ?? false,
@@ -125,7 +134,6 @@ export class ProductsService {
           }))
         )
       }
-
 
       // Insert options and their values
       if (data.options && data.options.length > 0) {
@@ -295,29 +303,50 @@ export class ProductsService {
     q?: string
     minPrice?: number
     maxPrice?: number
+    isBranded?: string
     limit?: number
     offset?: number
   }) {
     const limit = filters.limit || 20
     const offset = filters.offset || 0
 
-    const conditions = [eq(product.archived, false), eq(product.published, true)]
-    
+    const conditions = [
+      eq(product.archived, false),
+      eq(product.published, true),
+    ]
+
     if (filters.q) {
       conditions.push(ilike(product.title, `%${filters.q}%`))
     }
 
-    let productIds: string[] | null = null;
+    if (filters.isBranded === "true") {
+      conditions.push(isNotNull(product.brandId))
+    } else if (filters.isBranded === "false") {
+      conditions.push(isNull(product.brandId))
+    }
+
+    let productIds: string[] | null = null
 
     if (filters.categorySlug) {
-      const [cat] = await db.select({ id: category.id }).from(category).where(eq(category.slug, filters.categorySlug))
+      const [cat] = await db
+        .select({ id: category.id })
+        .from(category)
+        .where(eq(category.slug, filters.categorySlug))
       if (!cat) return []
 
-      const pc = await db.select({ productId: productCategory.productId }).from(productCategory).where(eq(productCategory.categoryId, cat.id))
-      const ids = pc.map(p => p.productId).filter(id => id !== null) as string[]
-      
-      const directMatches = await db.select({ id: product.id }).from(product).where(eq(product.categoryId, cat.id))
-      const directIds = directMatches.map(p => p.id)
+      const pc = await db
+        .select({ productId: productCategory.productId })
+        .from(productCategory)
+        .where(eq(productCategory.categoryId, cat.id))
+      const ids = pc
+        .map((p) => p.productId)
+        .filter((id) => id !== null) as string[]
+
+      const directMatches = await db
+        .select({ id: product.id })
+        .from(product)
+        .where(eq(product.categoryId, cat.id))
+      const directIds = directMatches.map((p) => p.id)
 
       const allIds = Array.from(new Set([...ids, ...directIds]))
       if (allIds.length === 0) return []
@@ -325,13 +354,18 @@ export class ProductsService {
     }
 
     if (filters.collectionId) {
-      const pc = await db.select({ productId: productCollection.productId }).from(productCollection).where(eq(productCollection.collectionId, filters.collectionId))
-      const ids = pc.map(p => p.productId).filter(id => id !== null) as string[]
-      
+      const pc = await db
+        .select({ productId: productCollection.productId })
+        .from(productCollection)
+        .where(eq(productCollection.collectionId, filters.collectionId))
+      const ids = pc
+        .map((p) => p.productId)
+        .filter((id) => id !== null) as string[]
+
       if (ids.length === 0) return []
-      
+
       if (productIds !== null) {
-        productIds = productIds.filter(id => ids.includes(id))
+        productIds = productIds.filter((id) => ids.includes(id))
         if (productIds.length === 0) return []
       } else {
         productIds = ids
@@ -342,8 +376,13 @@ export class ProductsService {
       conditions.push(inArray(product.id, productIds))
     }
 
-    // Note: minPrice and maxPrice filtering would require joining variants if price isn't consistently synced,
-    // but we can fallback to the product.price for now if it exists, or just omit it for simplicity if not heavily used yet.
+    if (filters.minPrice !== undefined) {
+      conditions.push(gte(product.price, filters.minPrice.toString()))
+    }
+    
+    if (filters.maxPrice !== undefined) {
+      conditions.push(lte(product.price, filters.maxPrice.toString()))
+    }
 
     const results = await db.query.product.findMany({
       where: and(...conditions),
@@ -353,6 +392,7 @@ export class ProductsService {
       with: {
         images: true,
         variants: { with: { images: true } },
+        categories: { with: { category: true } },
       },
     })
 
@@ -368,7 +408,7 @@ export class ProductsService {
     const offset = filters.offset || 0
 
     const conditions = [eq(product.archived, false)]
-    
+
     if (filters.q) {
       conditions.push(ilike(product.title, `%${filters.q}%`))
     }
@@ -413,9 +453,7 @@ export class ProductsService {
         const topOrdered = await db
           .select({
             productId: orderItem.productId,
-            totalQuantity: sql`sum(${orderItem.quantity})`.mapWith(
-              Number
-            ),
+            totalQuantity: sql`sum(${orderItem.quantity})`.mapWith(Number),
           })
           .from(orderItem)
           .where(isNotNull(orderItem.productId))
@@ -783,7 +821,7 @@ export class ProductsService {
     }
 
     let sameBrand: any[] = []
-    
+
     // First try to find products from the exact same brand
     if (current.brandId) {
       sameBrand = await db.query.product.findMany({
@@ -801,14 +839,16 @@ export class ProductsService {
     // If no brand products (or only the current product), fallback to same category
     if (sameBrand.length <= 1) {
       if (categoryIds.length > 0) {
-        const catMatches = await db.select({ id: productCategory.productId })
+        const catMatches = await db
+          .select({ id: productCategory.productId })
           .from(productCategory)
           .where(inArray(productCategory.categoryId, categoryIds))
-        
+
         const matchedIds = catMatches.map((m) => m.id)
-        
+
         const catConditions = []
-        if (matchedIds.length > 0) catConditions.push(inArray(product.id, matchedIds))
+        if (matchedIds.length > 0)
+          catConditions.push(inArray(product.id, matchedIds))
         catConditions.push(inArray(product.categoryId, categoryIds))
 
         sameBrand = await db.query.product.findMany({
@@ -837,13 +877,15 @@ export class ProductsService {
       where: and(
         eq(product.published, true),
         eq(product.archived, false),
-        current.brandId ? sql`${product.brandId} IS NULL OR ${product.brandId} != ${current.brandId}` : undefined
+        current.brandId
+          ? sql`${product.brandId} IS NULL OR ${product.brandId} != ${current.brandId}`
+          : undefined
       ),
       limit: limit * 2, // Fetch extra so we can filter duplicates in memory
       orderBy: [desc(product.createdAt)],
       with: { images: true, variants: { with: { images: true } } },
     })
-    
+
     // Fallback if still empty
     if (otherBrands.length === 0) {
       otherBrands = await db.query.product.findMany({
@@ -855,12 +897,14 @@ export class ProductsService {
     }
 
     // Deduplicate between arrays so the same product doesn't appear in both lists
-    const sameBrandIds = new Set(sameBrand.map(p => p.id))
-    otherBrands = otherBrands.filter(p => !sameBrandIds.has(p.id)).slice(0, limit)
+    const sameBrandIds = new Set(sameBrand.map((p) => p.id))
+    otherBrands = otherBrands
+      .filter((p) => !sameBrandIds.has(p.id))
+      .slice(0, limit)
 
     return {
       sameBrand,
-      otherBrands
+      otherBrands,
     }
   }
 
@@ -878,11 +922,18 @@ export class ProductsService {
 
       // Clean up UUID fields that might be empty strings or invalid mocked values
       baseData.brandId = isValidUUID(baseData.brandId) ? baseData.brandId : null
-      baseData.categoryId = isValidUUID(baseData.categoryId) ? baseData.categoryId : null
-      baseData.taxClassId = isValidUUID(baseData.taxClassId) ? baseData.taxClassId : null
+      baseData.categoryId = isValidUUID(baseData.categoryId)
+        ? baseData.categoryId
+        : null
+      baseData.taxClassId = isValidUUID(baseData.taxClassId)
+        ? baseData.taxClassId
+        : null
 
-      baseData.returnFormId = isValidUUID(baseData.returnFormId) ? baseData.returnFormId : null
-      if (baseData.returnWindowDays === undefined) delete baseData.returnWindowDays
+      baseData.returnFormId = isValidUUID(baseData.returnFormId)
+        ? baseData.returnFormId
+        : null
+      if (baseData.returnWindowDays === undefined)
+        delete baseData.returnWindowDays
 
       // Map SEO fields
       const updateValues: Record<string, any> = {

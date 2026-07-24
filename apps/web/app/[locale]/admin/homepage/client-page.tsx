@@ -82,19 +82,28 @@ function SortableSlideItem({
         
         {/* Thumbnail */}
         <div className="h-16 w-28 bg-muted rounded-md overflow-hidden shrink-0 relative">
-          {item.image ? (
+          {item.mediaType === "video" || item.video ? (
+            <img 
+              src={item.video?.thumbnail?.url || ""} 
+              alt={item.title || 'Slide'} 
+              className="w-full h-full object-cover" 
+            />
+          ) : item.image ? (
             <img 
               src={typeof item.image === "string" ? item.image : (item.image?.avif?.url || item.image?.url)} 
               alt={item.title || 'Slide'} 
               className="w-full h-full object-cover" 
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">No Image</div>
+            <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">No Media</div>
           )}
         </div>
         <div>
           <p className="font-medium text-foreground">{item.title || 'Untitled Slide'}</p>
-          <p className="text-xs text-muted-foreground">{item.published ? 'Published' : 'Draft'}</p>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">{item.published ? 'Published' : 'Draft'}</span>
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary uppercase">{item.mediaType || "image"}</span>
+          </div>
         </div>
       </div>
       
@@ -273,10 +282,14 @@ function HeroSlideForm({ initialData, onSuccess }: { initialData?: any, onSucces
       linkUrl: initialData?.linkUrl || "",
       published: initialData?.published || false,
       image: initialData?.image || null,
+      video: initialData?.video || null,
+      mediaType: initialData?.mediaType || "image",
     }
   })
 
   const watchImage = watch("image")
+  const watchVideo = watch("video")
+  const watchMediaType = watch("mediaType")
   const watchPublished = watch("published")
 
   const createMutation = useCreateHeroCarouselMutation()
@@ -284,8 +297,8 @@ function HeroSlideForm({ initialData, onSuccess }: { initialData?: any, onSucces
   const isPending = createMutation.isPending || updateMutation.isPending
 
   const onSubmit = (data: any) => {
-    if (!data.image) {
-      alert("Image is required for Hero Slide (16:9 recommended)")
+    if (!data.image && !data.video) {
+      alert("Media is required for Hero Slide")
       return
     }
 
@@ -296,18 +309,31 @@ function HeroSlideForm({ initialData, onSuccess }: { initialData?: any, onSucces
     }
   }
 
+  const handleMediaChange = (val: any) => {
+    if (val?.mimeType?.startsWith('video/') || val?.webm || val?.mp4) {
+      setValue("mediaType", "video")
+      setValue("video", val)
+      setValue("image", null)
+    } else {
+      setValue("mediaType", "image")
+      setValue("image", val)
+      setValue("video", null)
+    }
+  }
+
   return (
     <>
       <form id="hero-slide-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       
       <div className="space-y-2">
-        <Label>Hero Banner Image (16:9 ratio recommended) <span className="text-destructive">*</span></Label>
+        <Label>Hero Banner Media (16:9 ratio recommended) <span className="text-destructive">*</span></Label>
         <div className="max-w-xl">
            <MediaUploader 
-             value={watchImage} 
-             onChange={(val) => setValue("image", val)} 
+             value={watchMediaType === "video" ? watchVideo : watchImage} 
+             onChange={handleMediaChange} 
              multiple={false} 
              preset="banner"
+             acceptVideo={true}
            />
         </div>
       </div>
@@ -352,7 +378,7 @@ function HeroSlideForm({ initialData, onSuccess }: { initialData?: any, onSucces
         formId="hero-slide-form"
         onCancel={onSuccess}
         isPending={isPending}
-        disabled={!watchImage}
+        disabled={!watchImage && !watchVideo}
         saveActionLabel={isEditing ? "Save Changes" : "Create Slide"}
         infoPanel={
           <div className="flex items-center gap-2">

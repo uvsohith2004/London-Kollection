@@ -35,8 +35,6 @@ export interface ProductDimensionsDTO {
   weightUnit?: string
 }
 
-
-
 export interface CreateProductDTO {
   title: string
   slug: string

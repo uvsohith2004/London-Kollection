@@ -146,112 +146,8 @@ function AppSidebar({ pathname, session }: { pathname: string; session: any }) {
   )
 }
 
-// ----------------------------------------------------------------------
-// MOBILE NAVIGATION (Kept intact per request)
-// ----------------------------------------------------------------------
-function MobileNav({ pathname, session }: { pathname: string; session: any }) {
-  const { isMobile } = useSidebar()
-  const [menuOpen, setMenuOpen] = React.useState(false)
-  const { logout } = useLogout()
-
-  React.useEffect(() => {
-    if (menuOpen) document.body.style.overflow = "hidden"
-    else document.body.style.overflow = "unset"
-  }, [menuOpen])
-
-  // Only render this custom layout on mobile devices
-  if (!isMobile) return null
-
-  return (
-    <>
-      <header className="fixed inset-x-0 top-0 z-40 flex h-16 items-center justify-between border-b border-border/60 bg-background/80 px-4 backdrop-blur-md">
-        <span className="font-heading text-xl font-bold tracking-[0.2em] uppercase">
-          LK.
-        </span>
-        <button onClick={() => setMenuOpen(true)} className="p-2">
-          <Menu className="h-6 w-6 text-foreground" />
-        </button>
-      </header>
-
-      {menuOpen && (
-        <div className="fixed inset-0 z-50 flex animate-in flex-col bg-background duration-200 fade-in">
-          <div className="flex h-16 shrink-0 items-center justify-between border-b border-border/60 px-4">
-            <span className="font-heading text-xl font-bold tracking-[0.2em] uppercase">
-              MENU
-            </span>
-            <button onClick={() => setMenuOpen(false)} className="p-2">
-              <X className="h-6 w-6 text-foreground" />
-            </button>
-          </div>
-
-          <ScrollArea className="flex-1 p-6">
-            <div className="flex flex-col gap-2">
-              {NAV_ITEMS.map((item) => {
-                const isActive =
-                  pathname === item.href || pathname.startsWith(`${item.href}/`)
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setMenuOpen(false)}
-                    className={cn(
-                      "flex items-center gap-6 border-b border-border/30 py-6 text-sm tracking-[0.2em] uppercase transition-colors",
-                      isActive
-                        ? "font-bold text-foreground"
-                        : "text-muted-foreground"
-                    )}
-                  >
-                    <item.icon
-                      className={cn(
-                        "h-5 w-5",
-                        isActive ? "text-foreground" : "text-muted-foreground"
-                      )}
-                    />
-                    {item.name}
-                  </Link>
-                )
-              })}
-            </div>
-          </ScrollArea>
-
-          <div className="flex shrink-0 items-center justify-between border-t border-border/60 p-6">
-            <span suppressHydrationWarning className="text-xs tracking-widest uppercase">
-              {session?.user?.name || "Admin"}
-            </span>
-            <button
-              onClick={() => logout()}
-              className="text-xs font-bold tracking-widest text-destructive uppercase"
-            >
-              Sign Out
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="pb-safe fixed inset-x-0 bottom-0 z-30 flex h-16 items-center justify-around border-t border-border/60 bg-background/90 backdrop-blur-lg">
-        {NAV_ITEMS.slice(0, 4).map((item) => {
-          const isActive =
-            pathname === item.href || pathname.startsWith(`${item.href}/`)
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex flex-col items-center justify-center gap-1 p-2 transition-colors",
-                isActive ? "text-foreground" : "text-muted-foreground"
-              )}
-            >
-              <item.icon className="h-5 w-5" />
-              {isActive && (
-                <div className="mt-1 h-1 w-1 rounded-full bg-foreground" />
-              )}
-            </Link>
-          )
-        })}
-      </div>
-    </>
-  )
-}
+import { useRouter } from "next/navigation"
+import { MobileNavBar } from "./mobile-nav-bar"
 
 function SaveBarPortalContainer() {
   const { state, isMobile } = useSidebar()
@@ -266,26 +162,58 @@ function SaveBarPortalContainer() {
   )
 }
 
+function MobileConnectedNavBar({ pathname }: { pathname: string }) {
+  const { isMobile } = useSidebar()
+  const router = useRouter()
+  
+  if (!isMobile) return null
+
+  // Find index of current route in NAV_ITEMS
+  // Be careful with "/admin" matching everything, so we check exact match for root, or startsWith for others
+  const selectedIndex = NAV_ITEMS.findIndex(item => {
+    if (item.href === "/admin") return pathname === "/admin" || pathname === "/en/admin" || pathname === "/ar/admin";
+    return pathname === item.href || pathname.startsWith(`${item.href}/`) || pathname.includes(item.href)
+  })
+  
+  const safeIndex = selectedIndex === -1 ? 0 : selectedIndex;
+
+  const handleSelect = (idx: number) => {
+    const item = NAV_ITEMS[idx];
+    if (item) {
+      router.push(item.href)
+    }
+  }
+
+  return (
+    <div className="md:hidden">
+      <MobileNavBar items={NAV_ITEMS} selectedIndex={safeIndex} onSelectIndex={handleSelect} />
+    </div>
+  )
+}
+
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { data: session } = authClient.useSession()
 
   return (
+    <SidebarProvider defaultOpen={false} className="h-screen overflow-hidden">
+      <style>{`
+        body, html {
+          overflow: hidden !important;
+        }
+      `}</style>
+      <AppSidebar pathname={pathname} session={session} />
 
-      <SidebarProvider defaultOpen={false}>
-        <AppSidebar pathname={pathname} session={session} />
-
-        <MobileNav pathname={pathname} session={session} />
-
-        <ScrollArea className="w-full ">
-          <SidebarInset className="bg-background w-full pt-10 px-4 ">
-            <main className="flex min-w-0 gap-2 px-4 pb-24 w-full">
-              {children}
-            </main>
-          </SidebarInset>
-          <SaveBarPortalContainer />
-        </ScrollArea>
-      </SidebarProvider>
-  
+      <div className="w-full flex flex-col h-full overflow-hidden">
+        <SidebarInset className="bg-background w-full pt-10 px-4 flex-1 overflow-y-auto custom-scrollbar md:pb-24">
+          <main className="flex min-w-0 gap-2 px-0 md:px-4 w-full min-h-max">
+            {children}
+          </main>
+        </SidebarInset>
+        <SaveBarPortalContainer />
+        <MobileConnectedNavBar pathname={pathname} />
+      </div>
+    </SidebarProvider>
   )
 }
+

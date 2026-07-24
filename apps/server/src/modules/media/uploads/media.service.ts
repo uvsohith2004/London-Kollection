@@ -1,14 +1,19 @@
 import { BadRequestError } from "@/core/errors"
 import { CloudflareR2Provider } from "@/modules/providers"
+import { uploadOptimizedVideo } from "@/services/video/uploadOptimizedVideo"
 
 export class MediaService {
   private provider = new CloudflareR2Provider()
 
   async uploadFile(file: { name: string; type: string; buffer: Buffer }, preset?: string) {
     // Validate file size and type
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"]
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "video/mp4", "video/x-matroska"]
     if (!allowedTypes.includes(file.type)) {
       throw new BadRequestError(`File type ${file.type} is not allowed.`)
+    }
+
+    if (file.type.startsWith("video/") || file.name.endsWith(".mkv")) {
+      return await uploadOptimizedVideo(file, this.provider, preset || "video")
     }
 
     if (preset) {

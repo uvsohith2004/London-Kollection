@@ -1,5 +1,5 @@
-import ClientPage from "./client-page";
+import ClientPage from "./client-page"
 
 export default function CheckoutPage() {
-  return <ClientPage />;
+  return <ClientPage />
 }

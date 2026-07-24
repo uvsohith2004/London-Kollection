@@ -6,7 +6,9 @@ import { transformProductList } from "@/core/transformers/product.transformer"
 
 export class HeroService {
   async addSlide(data: {
-    image: any
+    image?: any
+    video?: any
+    mediaType?: "image" | "video"
     title?: string
     description?: string
     buttonText?: string
@@ -19,7 +21,9 @@ export class HeroService {
     const [result] = await db
       .insert(heroCarousel)
       .values({
-        image: data.image,
+        image: data.image || null,
+        video: data.video || null,
+        mediaType: data.mediaType || "image",
         title: data.title || null,
         description: data.description || null,
         buttonText: data.buttonText || null,

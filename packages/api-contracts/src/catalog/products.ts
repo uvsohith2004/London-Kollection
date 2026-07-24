@@ -17,24 +17,45 @@ export const VariantSchema = z.object({
   name: z.string().optional(),
   sku: z.string().min(1, "SKU is required"),
   isDefault: z.boolean().optional(),
-  price: z.string().refine((val) => !isNaN(Number(val)), { message: "Price must be a valid number string" }).optional(),
-  discountValue: z.string().refine((val) => !isNaN(Number(val)), { message: "Discount must be a valid number string" }).optional(),
-  compareAtPrice: z.string().refine((val) => !isNaN(Number(val)), { message: "Compare price must be a valid number string" }).optional().nullable(),
+  price: z
+    .string()
+    .refine((val) => !isNaN(Number(val)), {
+      message: "Price must be a valid number string",
+    })
+    .optional(),
+  discountValue: z
+    .string()
+    .refine((val) => !isNaN(Number(val)), {
+      message: "Discount must be a valid number string",
+    })
+    .optional(),
+  compareAtPrice: z
+    .string()
+    .refine((val) => !isNaN(Number(val)), {
+      message: "Compare price must be a valid number string",
+    })
+    .optional()
+    .nullable(),
   stock: z.number().int().nonnegative(),
   combinations: z.record(z.string(), z.string()),
   barcode: z.string().optional().nullable(),
-  inventoryStatus: z.enum(["in_stock", "out_of_stock", "pre_order", "coming_soon"]).optional(),
+  inventoryStatus: z
+    .enum(["in_stock", "out_of_stock", "pre_order", "coming_soon"])
+    .optional(),
   images: z.array(ImageSchema).optional(),
 })
 
-export const DimensionsSchema = z.object({
-  length: z.number(),
-  width: z.number(),
-  height: z.number(),
-  weight: z.number(),
-  lengthUnit: z.enum(["in", "cm"]),
-  weightUnit: z.enum(["kg", "lb"]),
-}).optional().nullable()
+export const DimensionsSchema = z
+  .object({
+    length: z.number(),
+    width: z.number(),
+    height: z.number(),
+    weight: z.number(),
+    lengthUnit: z.enum(["in", "cm"]),
+    weightUnit: z.enum(["kg", "lb"]),
+  })
+  .optional()
+  .nullable()
 
 export const CreateProductSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -42,9 +63,20 @@ export const CreateProductSchema = z.object({
   shortDescription: z.string().optional(),
   description: z.string().optional(),
   visibility: z.enum(["public", "hidden"]).optional(),
-  status: z.enum(["draft", "published", "archived", "scheduled", "hidden"]).optional(),
-  price: z.string().refine((val) => !isNaN(Number(val)), { message: "Price must be a valid number string" }),
-  discount: z.string().refine((val) => !isNaN(Number(val)), { message: "Discount must be a valid number string" }).optional(),
+  status: z
+    .enum(["draft", "published", "archived", "scheduled", "hidden"])
+    .optional(),
+  price: z
+    .string()
+    .refine((val) => !isNaN(Number(val)), {
+      message: "Price must be a valid number string",
+    }),
+  discount: z
+    .string()
+    .refine((val) => !isNaN(Number(val)), {
+      message: "Discount must be a valid number string",
+    })
+    .optional(),
   currency: z.string().optional(),
   brandId: z.string().min(1).optional().nullable(),
   productType: z.string().optional().nullable(),
@@ -101,7 +133,7 @@ export const AdminProductsQuerySchema = z.object({
 export type AdminProductsQuery = z.infer<typeof AdminProductsQuerySchema>
 
 export const LimitQuerySchema = z.object({
-  limit: z.string().optional()
+  limit: z.string().optional(),
 })
 export type LimitQuery = z.infer<typeof LimitQuerySchema>
 

@@ -21,7 +21,10 @@ export function HomeCarousel() {
     subtitle: h.description,
     link: h.linkUrl,
     linkText: h.buttonText,
-    asset: h.image, 
-    imageUrl: typeof h.image === 'string' ? h.image : (h.image?.avif?.url || h.image?.url) 
+    mediaType: h.mediaType,
+    asset: h.mediaType === "video" ? h.video : h.image, 
+    imageUrl: h.mediaType === "video" 
+      ? (h.video?.webm?.url || h.video?.mp4?.url) 
+      : (typeof h.image === 'string' ? h.image : (h.image?.avif?.url || h.image?.url))
   })) || []} />
 }

@@ -48,12 +48,12 @@ export function Logo({ className, isMobile }: LogoProps) {
           <img 
             src={logoUrl} 
             alt={siteName} 
-            className="h-8 md:h-10 w-auto object-contain dark:hidden"
+            className="h-12 object-contain dark:hidden"
           />
           <img 
             src={logoDarkUrl} 
             alt={siteName} 
-            className="h-8 md:h-10 w-auto object-contain hidden dark:block"
+            className="h-12 object-contain hidden dark:block"
           />
         </>
       ) : logoUrl ? (

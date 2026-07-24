@@ -1,4 +1,13 @@
-import { pgTable, text, uuid, timestamp, index, integer, boolean, jsonb } from "drizzle-orm/pg-core"
+import {
+  pgTable,
+  text,
+  uuid,
+  timestamp,
+  index,
+  integer,
+  boolean,
+  jsonb,
+} from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 import type { OptimizedImageAsset } from "./image.schema"
 

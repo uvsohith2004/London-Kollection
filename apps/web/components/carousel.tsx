@@ -1,12 +1,13 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState, useRef } from "react"
 import { OptimizedImage, OptimizedImageAsset } from "./optimized-image"
 import { useTheme } from "next-themes"
 import { cn } from "@workspace/ui/lib/utils"
 import AutoPlay from "embla-carousel-autoplay"
 import { flushSync } from "react-dom"
 import type { StaticImageData } from "next/image"
+import { Play } from "lucide-react"
 
 // Import the reusable carousel components
 import {
@@ -24,6 +25,7 @@ export interface HeroSlide {
   subtitle?: string
   link?: string
   linkText?: string
+  mediaType?: "image" | "video"
 }
 
 export function ImageCarousel({ images }: { images: HeroSlide[] }) {
@@ -33,13 +35,40 @@ export function ImageCarousel({ images }: { images: HeroSlide[] }) {
   const [scrollSnaps, setScrollSnaps] = useState<number[]>([])
   const [isDesktop, setIsDesktop] = useState(true)
   const [parallaxValues, setParallaxValues] = useState<number[]>([])
+  
+  // Ref array for video elements
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([])
 
   const scrollTo = useCallback((index: number) => api && api.scrollTo(index), [api])
 
   const onSelect = useCallback(() => {
     if (!api) return
-    setSelectedIndex(api.selectedScrollSnap())
-  }, [api])
+    const activeIndex = api.selectedScrollSnap()
+    setSelectedIndex(activeIndex)
+
+    const isVideo = images[activeIndex]?.mediaType === "video"
+    const autoplay = api.plugins().autoplay as any
+
+    if (isVideo) {
+      autoplay?.stop()
+    } else {
+      autoplay?.reset()
+      autoplay?.play()
+    }
+
+    // Play active video, pause others
+    videoRefs.current.forEach((video, index) => {
+      if (video) {
+        if (index === activeIndex) {
+          video.currentTime = 0
+          video.play().catch(e => console.log("Autoplay prevented", e))
+        } else {
+          video.pause()
+          video.currentTime = 0
+        }
+      }
+    })
+  }, [api, images])
 
   const onScroll = useCallback(() => {
     if (!api) return
@@ -93,19 +122,47 @@ export function ImageCarousel({ images }: { images: HeroSlide[] }) {
           {images.map((image, index) => (
             <CarouselItem key={index} className="relative h-full pl-0 basis-full">
               <div className="relative h-full w-full overflow-hidden group">
-                <OptimizedImage
-                  asset={image.asset || image.imageUrl}
-                  fallbackUrl={image.imageUrl}
-                  alt={image.title || `Carousel image ${index + 1}`}
-                  fill
-                  priority={index < 2}
-                  className="object-cover bg-black select-none"
-                  sizes={isDesktop ? "100vw" : "(max-width: 768px) 100vw, 50vw"}
-                  style={{
-                    transform: `translateX(${parallaxValues[index] || 0}px)`,
-                    transition: "transform 0.3s ease-out",
-                  }}
-                />
+                {image.mediaType === "video" ? (
+                  <video
+                    ref={(el) => {
+                      if (el) videoRefs.current[index] = el
+                    }}
+                    className="w-full h-full object-cover bg-black select-none pointer-events-none"
+                    style={{
+                      transform: `translateX(${parallaxValues[index] || 0}px)`,
+                      transition: "transform 0.3s ease-out",
+                    }}
+                    muted
+                    playsInline
+                    onEnded={() => api?.scrollNext()}
+                    preload="metadata"
+                    poster={(image.asset as any)?.thumbnail?.url}
+                  >
+                    {(image.asset as any)?.webm?.url && (
+                      <source src={(image.asset as any).webm.url} type="video/webm" />
+                    )}
+                    {(image.asset as any)?.mp4?.url && (
+                      <source src={(image.asset as any).mp4.url} type="video/mp4" />
+                    )}
+                    {image.imageUrl && (
+                      <source src={image.imageUrl} type="video/mp4" />
+                    )}
+                  </video>
+                ) : (
+                  <OptimizedImage
+                    asset={image.asset as any}
+                    fallbackUrl={image.imageUrl}
+                    alt={image.title || `Carousel image ${index + 1}`}
+                    fill
+                    priority={index < 2}
+                    className="object-cover bg-black select-none"
+                    sizes={isDesktop ? "100vw" : "(max-width: 768px) 100vw, 50vw"}
+                    style={{
+                      transform: `translateX(${parallaxValues[index] || 0}px)`,
+                      transition: "transform 0.3s ease-out",
+                    }}
+                  />
+                )}
                 <div className="absolute inset-0 bg-black/30 pointer-events-none transition-opacity group-active:bg-black/40" />
                 
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 z-20 pointer-events-none">
@@ -144,12 +201,16 @@ export function ImageCarousel({ images }: { images: HeroSlide[] }) {
             <button
               key={index}
               className={cn(
-                "w-2 h-2 rounded-full transition-all duration-300 ease-in-out border border-slate-400",
-                selectedIndex === index ? "bg-primary w-4" : "bg-primary/50 hover:bg-primary/75",
+                "transition-all duration-300 ease-in-out border border-slate-400 flex items-center justify-center text-[10px]",
+                images[index]?.mediaType === "video"
+                  ? "w-6 h-6 rounded-full" 
+                  : (selectedIndex === index ? "bg-primary w-4 h-2 rounded-full" : "bg-primary/50 hover:bg-primary/75 w-2 h-2 rounded-full")
               )}
               onClick={() => scrollTo(index)}
               aria-label={`Go to slide ${index + 1}`}
-            />
+            >
+              {images[index]?.mediaType === "video" && <Play className="w-3 h-3 text-primary-foreground fill-current" />}
+            </button>
           ))}
         </div>
       </div>

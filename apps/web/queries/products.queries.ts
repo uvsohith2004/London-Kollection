@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, infiniteQueryOptions } from "@tanstack/react-query";
 import { ProductService } from "../services/product.service";
 import type { SearchQuery } from "@workspace/api-contracts";
 
@@ -9,6 +9,19 @@ export const productQueries = {
     queryOptions({
       queryKey: [...productQueries.lists(), filters] as const,
       queryFn: () => ProductService.search(filters),
+      staleTime: 5 * 60 * 1000,
+    }),
+  listInfinite: (filters: SearchQuery) =>
+    infiniteQueryOptions({
+      queryKey: [...productQueries.lists(), filters, "infinite"] as const,
+      queryFn: ({ pageParam }) => ProductService.search({ ...filters, page: pageParam?.toString() }),
+      initialPageParam: 1,
+      getNextPageParam: (lastPage, allPages) => {
+        const limit = parseInt(filters.limit || "12", 10);
+        if (!lastPage || !lastPage.items) return undefined;
+        if (lastPage.items.length < limit) return undefined;
+        return allPages.length + 1;
+      },
       staleTime: 5 * 60 * 1000,
     }),
   newArrivals: () =>

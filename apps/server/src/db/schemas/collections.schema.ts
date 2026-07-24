@@ -1,6 +1,14 @@
-import { pgTable, text, uuid, timestamp, index, jsonb, boolean, integer } from "drizzle-orm/pg-core"
+import {
+  pgTable,
+  text,
+  uuid,
+  timestamp,
+  index,
+  jsonb,
+  boolean,
+  integer,
+} from "drizzle-orm/pg-core"
 import type { OptimizedImageAsset } from "./image.schema"
-
 
 export const collection = pgTable(
   "collection",
@@ -21,7 +29,5 @@ export const collection = pgTable(
       .$onUpdate(() => new Date())
       .notNull(),
   },
-  (table) => [
-    index("collection_slug_idx").on(table.slug),
-  ]
+  (table) => [index("collection_slug_idx").on(table.slug)]
 )

@@ -15,9 +15,10 @@ interface MediaUploaderProps {
   className?: string
   cropAspect?: number
   cropShape?: "rect" | "round"
+  acceptVideo?: boolean
 }
 
-export function MediaUploader({ value, onChange, multiple = false, preset, className, cropAspect, cropShape }: MediaUploaderProps) {
+export function MediaUploader({ value, onChange, multiple = false, preset, className, cropAspect, cropShape, acceptVideo = false }: MediaUploaderProps) {
   const uploadMutation = useUploadMediaMutation()
   
   // Ensure values is always an array for internal state handling
@@ -45,9 +46,9 @@ export function MediaUploader({ value, onChange, multiple = false, preset, class
         // Upload each file
         const res: any = await uploadMutation.mutateAsync({ file, preset })
         
-        // res should contain the url (e.g., res.url or res.key) or avif/webp if optimized
-        const previewKey = res.avif?.url || res.url || res.key 
-        const finalValue = res.avif ? res : previewKey
+        // res should contain the url (e.g., res.url or res.key) or avif/webp if optimized, or webm/mp4 for videos
+        const previewKey = res.avif?.url || res.webm?.url || res.mp4?.url || res.url || res.key 
+        const finalValue = (res.avif || res.webm || res.mp4) ? res : previewKey
         
         // Map the final URL to the local preview so we can use the local preview until refresh
         if (previewKey) {
@@ -79,7 +80,10 @@ export function MediaUploader({ value, onChange, multiple = false, preset, class
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: {
+    accept: acceptVideo ? {
+      'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.svg'],
+      'video/*': ['.mp4', '.mkv']
+    } : {
       'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.svg']
     },
     multiple
@@ -101,17 +105,27 @@ export function MediaUploader({ value, onChange, multiple = false, preset, class
         {/* Render existing images */}
         {values.map((val, idx) => {
           const isString = typeof val === "string"
-          const urlKey = isString ? val : (val?.avif?.url || val?.webp?.url || val?.url || "")
+          const urlKey = isString ? val : (val?.avif?.url || val?.webp?.url || val?.webm?.url || val?.mp4?.url || val?.url || "")
+          const finalSrc = localPreviews[urlKey] || urlKey || undefined;
+          
           return (
             <div key={idx} className="relative group w-24 h-24 sm:w-32 sm:h-32 rounded-xl overflow-hidden border border-border/40 bg-muted shrink-0">
-              <img 
-                src={localPreviews[urlKey] || urlKey} 
-                alt={`Preview ${idx}`} 
-                className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                onError={(e) => {
-                  // If the remote URL fails, and we don't have a local preview, it shows broken.
-                }}
-              />
+              {urlKey?.endsWith('.mp4') || urlKey?.endsWith('.webm') || urlKey?.endsWith('.mkv') || val?.mimeType?.startsWith('video/') ? (
+                <video 
+                  src={finalSrc} 
+                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                  muted playsInline loop autoPlay
+                />
+              ) : (
+                <img 
+                  src={finalSrc} 
+                  alt={`Preview ${idx}`} 
+                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                  onError={(e) => {
+                    // If the remote URL fails, and we don't have a local preview, it shows broken.
+                  }}
+                />
+              )}
             <button
               type="button"
               onClick={(e) => handleRemove(e, idx)}

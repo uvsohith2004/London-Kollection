@@ -6,7 +6,7 @@ export function transformProduct(raw: any | null | undefined) {
     if (img.asset) {
       rawUrl = img.asset.webp?.url || img.asset.avif?.url || rawUrl
     }
-    
+
     let url = undefined
     if (rawUrl) {
       if (rawUrl.startsWith("/api/media/view/")) {
@@ -15,7 +15,7 @@ export function transformProduct(raw: any | null | undefined) {
         url = `/api/media/view/${encodeURIComponent(rawUrl)}`
       }
     }
-    
+
     return {
       ...img,
       asset: img.asset || undefined,
@@ -85,7 +85,10 @@ export function transformProduct(raw: any | null | undefined) {
     compareAtPrice: undefined as number | undefined,
     sku: raw.variants?.[0]?.sku || raw.slug,
     taxClass: raw.taxClass || undefined,
-    images: (raw.images?.length ? raw.images : (raw.variants?.[0]?.images || [])).map(mapImage),
+    images: (raw.images?.length
+      ? raw.images
+      : raw.variants?.[0]?.images || []
+    ).map(mapImage),
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
   }
@@ -99,7 +102,7 @@ export function transformProductList(raw: any | null | undefined) {
     if (img.asset) {
       rawUrl = img.asset.webp?.url || img.asset.avif?.url || rawUrl
     }
-    
+
     let url = undefined
     if (rawUrl) {
       if (rawUrl.startsWith("/api/media/view/")) {
@@ -108,7 +111,7 @@ export function transformProductList(raw: any | null | undefined) {
         url = `/api/media/view/${encodeURIComponent(rawUrl)}`
       }
     }
-    
+
     return {
       ...img,
       asset: img.asset || undefined,
@@ -124,8 +127,11 @@ export function transformProductList(raw: any | null | undefined) {
     shortDescription: raw.shortDescription || undefined,
     description: raw.description || "",
     categoryId: raw.categoryId || raw.categories?.[0]?.categoryId || "",
-    collection: raw.collections?.map((pc: any) => pc.collection).filter(Boolean) || [],
-    occasions: raw.occasions?.map((po: any) => po.occasion).filter(Boolean) || [],
+    categories: raw.categories || undefined,
+    collection:
+      raw.collections?.map((pc: any) => pc.collection).filter(Boolean) || [],
+    occasions:
+      raw.occasions?.map((po: any) => po.occasion).filter(Boolean) || [],
     isNewArrival: raw.isNewArrival || false,
     options:
       raw.options?.map((opt: any) => ({
@@ -156,7 +162,9 @@ export function transformProductList(raw: any | null | undefined) {
     },
     metaTitle: raw.metaTitle || undefined,
     metaDescription: raw.metaDescription || undefined,
-    seoKeywords: Array.isArray(raw.seoKeywords) ? raw.seoKeywords.join(", ") : undefined,
+    seoKeywords: Array.isArray(raw.seoKeywords)
+      ? raw.seoKeywords.join(", ")
+      : undefined,
     averageRating: Number(raw.averageRating || 0),
     reviewCount: raw.reviewCount || 0,
     dimensions: raw.dimensions || undefined,
@@ -176,7 +184,10 @@ export function transformProductList(raw: any | null | undefined) {
     published: raw.published || raw.visibility === "public" || false,
     featured: raw.featured || false,
     status: raw.published ? "published" : "draft",
-    images: (raw.images?.length ? raw.images : (raw.variants?.[0]?.images || [])).map(mapImage),
+    images: (raw.images?.length
+      ? raw.images
+      : raw.variants?.[0]?.images || []
+    ).map(mapImage),
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
   }

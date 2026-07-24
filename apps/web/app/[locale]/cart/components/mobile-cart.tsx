@@ -146,8 +146,6 @@ export function MobileCart({ summary }: { summary?: CartSummary }) {
           ))}
         </div>
       </div>
-
-      {/* Sticky Bottom Bar for Mobile (sits above the global bottom navbar) */}
       <div 
         className="fixed left-0 right-0 bg-background/80 backdrop-blur-xl border-t border-border/50 p-4 z-40"
         style={{ bottom: "calc(4rem + env(safe-area-inset-bottom))" }}

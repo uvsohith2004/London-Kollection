@@ -9,6 +9,7 @@ export const SearchQuerySchema = z.object({
   featured: z.string().optional(),
   discount: z.string().optional(),
   sortBy: z.enum(["newest", "price_asc", "price_desc", "popularity", "discount"]).optional(),
+  isBranded: z.enum(["true", "false"]).optional(),
   limit: z.string().optional(),
   page: z.string().optional(),
 })

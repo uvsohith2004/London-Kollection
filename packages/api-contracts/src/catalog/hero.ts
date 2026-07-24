@@ -2,7 +2,9 @@ import { z } from "zod"
 
 export const HeroCarouselSchema = z.object({
   id: z.string().uuid(),
-  image: z.any(),
+  image: z.any().nullable().optional(),
+  video: z.any().nullable().optional(),
+  mediaType: z.enum(["image", "video"]).default("image"),
   title: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
   buttonText: z.string().nullable().optional(),
@@ -18,7 +20,9 @@ export const HeroCarouselSchema = z.object({
 export type HeroCarousel = z.infer<typeof HeroCarouselSchema>
 
 export const CreateHeroSlideSchema = z.object({
-  image: z.any(),
+  image: z.any().nullable().optional(),
+  video: z.any().nullable().optional(),
+  mediaType: z.enum(["image", "video"]).default("image"),
   title: z.union([z.string(), z.literal("")]).optional(),
   description: z.union([z.string(), z.literal("")]).optional(),
   buttonText: z.union([z.string(), z.literal("")]).optional(),
@@ -30,7 +34,9 @@ export const CreateHeroSlideSchema = z.object({
 })
 
 export const UpdateHeroSlideSchema = z.object({
-  image: z.any().optional(),
+  image: z.any().nullable().optional(),
+  video: z.any().nullable().optional(),
+  mediaType: z.enum(["image", "video"]).optional(),
   title: z.union([z.string(), z.literal("")]).optional(),
   description: z.union([z.string(), z.literal("")]).optional(),
   buttonText: z.union([z.string(), z.literal("")]).optional(),

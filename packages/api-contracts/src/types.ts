@@ -46,6 +46,7 @@ export interface Product {
   brandName?: string
   productType?: string
   categoryId: string
+  categories?: any[]
   collection: any[]
   occasions: any[]
   isNewArrival: boolean

@@ -39,6 +39,7 @@ export class ProductsController {
       q: q.q,
       minPrice: q.minPrice ? Number(q.minPrice) : undefined,
       maxPrice: q.maxPrice ? Number(q.maxPrice) : undefined,
+      isBranded: q.isBranded,
       limit,
       offset,
     })

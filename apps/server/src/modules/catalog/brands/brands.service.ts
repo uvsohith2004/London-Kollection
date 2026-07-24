@@ -12,11 +12,11 @@ export class BrandsService {
           ilike(brand.name, `%${search}%`),
           ilike(brand.slug, `%${search}%`)
         ),
-        orderBy: (brand, { desc }) => [desc(brand.createdAt)]
+        orderBy: (brand, { desc }) => [desc(brand.createdAt)],
       })
     }
     return await db.query.brand.findMany({
-      orderBy: (brand, { desc }) => [desc(brand.createdAt)]
+      orderBy: (brand, { desc }) => [desc(brand.createdAt)],
     })
   }
 
