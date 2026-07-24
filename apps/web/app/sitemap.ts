@@ -2,6 +2,8 @@ import { MetadataRoute } from 'next'
 import { serverApi } from "@/api-client/server"
 import type { Product, ProductsResponse } from "@workspace/api-contracts"
 
+export const dynamic = 'force-dynamic'
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://londonkollection.com"
   
