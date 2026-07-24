@@ -63,6 +63,41 @@ export function ClientProductView({ slug, variantId }: { slug: string; variantId
       {isTablet && <TabProduct product={product as any} variantId={variantId} />}
       {!isDesktop && !isTablet && <MobileProduct product={product as any} variantId={variantId} />}
 
+      {/* Product Dimensions / Specifications */}
+      {product?.dimensions && (product.dimensions.weight > 0 || product.dimensions.length > 0 || product.dimensions.width > 0 || product.dimensions.height > 0) && (
+        <div className="container mx-auto px-4 md:px-8 py-12 border-t border-border/50">
+          <div className="max-w-5xl mx-auto">
+            <h2 className="text-xl font-serif tracking-wide mb-6">Specifications & Dimensions</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {product.dimensions.weight > 0 && (
+                <div className="flex flex-col space-y-1 p-4 bg-muted/30 rounded-lg">
+                  <span className="text-sm text-muted-foreground uppercase tracking-widest font-semibold">Weight</span>
+                  <span className="text-lg font-medium">{product.dimensions.weight} {product.dimensions.weightUnit || 'kg'}</span>
+                </div>
+              )}
+              {product.dimensions.length > 0 && (
+                <div className="flex flex-col space-y-1 p-4 bg-muted/30 rounded-lg">
+                  <span className="text-sm text-muted-foreground uppercase tracking-widest font-semibold">Length</span>
+                  <span className="text-lg font-medium">{product.dimensions.length} {product.dimensions.lengthUnit || 'cm'}</span>
+                </div>
+              )}
+              {product.dimensions.width > 0 && (
+                <div className="flex flex-col space-y-1 p-4 bg-muted/30 rounded-lg">
+                  <span className="text-sm text-muted-foreground uppercase tracking-widest font-semibold">Width</span>
+                  <span className="text-lg font-medium">{product.dimensions.width} {product.dimensions.lengthUnit || 'cm'}</span>
+                </div>
+              )}
+              {product.dimensions.height > 0 && (
+                <div className="flex flex-col space-y-1 p-4 bg-muted/30 rounded-lg">
+                  <span className="text-sm text-muted-foreground uppercase tracking-widest font-semibold">Height</span>
+                  <span className="text-lg font-medium">{product.dimensions.height} {product.dimensions.lengthUnit || 'cm'}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Product Reviews */}
       <div className="container mx-auto px-4 md:px-8 py-16 md:py-24 border-t border-border/50">
         <div className="max-w-5xl mx-auto">

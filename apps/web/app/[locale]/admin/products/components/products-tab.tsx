@@ -32,6 +32,8 @@ export function ProductsTab({ initialData, initialQuery }: ProductsTabProps) {
   const [isCreating, setIsCreating] = React.useState(false)
   const [editingProduct, setEditingProduct] = React.useState<any>(null)
 
+  const scrollPosRef = React.useRef(0)
+
   // Sync debounced search to URL
   React.useEffect(() => {
     const params = new URLSearchParams(searchParams.toString())
@@ -76,24 +78,27 @@ export function ProductsTab({ initialData, initialQuery }: ProductsTabProps) {
     [isLoading, isFetchingNextPage, hasNextPage, fetchNextPage]
   )
 
+  const handleCloseForm = () => {
+    setIsCreating(false)
+    setEditingProduct(null)
+    setTimeout(() => {
+      window.scrollTo({ top: scrollPosRef.current, behavior: "smooth" })
+    }, 50)
+  }
+
   return (
     <div className="space-y-6">
+      {(isCreating || editingProduct) && (
+        <div id="product-form-container" className="mb-8 animate-in duration-300 fade-in slide-in-from-top-4 w-full">
+          <ProductForm
+            initialData={editingProduct}
+            onSuccess={handleCloseForm}
+            onCancel={handleCloseForm}
+          />
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-4">
-        {(isCreating || editingProduct) && (
-          <div className="mb-8 animate-in duration-300 fade-in slide-in-from-top-4">
-            <ProductForm
-              initialData={editingProduct}
-              onSuccess={() => {
-                setIsCreating(false)
-                setEditingProduct(null)
-              }}
-              onCancel={() => {
-                setIsCreating(false)
-                setEditingProduct(null)
-              }}
-            />
-          </div>
-        )}
         <div className="relative w-full max-w-sm">
           <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -107,7 +112,13 @@ export function ProductsTab({ initialData, initialQuery }: ProductsTabProps) {
           <ProductLayoutSelection layout={layout} setLayout={setLayout} />
           {!isCreating && !editingProduct && (
             <Button
-              onClick={() => setIsCreating(true)}
+              onClick={() => {
+                scrollPosRef.current = window.scrollY
+                setIsCreating(true)
+                setTimeout(() => {
+                  document.getElementById('product-form-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }, 50)
+              }}
               className="h-10 rounded-full px-6 font-bold tracking-widest uppercase"
             >
               <Plus className="mr-2 h-4 w-4" /> Add Product
@@ -127,9 +138,12 @@ export function ProductsTab({ initialData, initialQuery }: ProductsTabProps) {
               products={products}
               layout={layout}
               onEdit={(product) => {
+                scrollPosRef.current = window.scrollY
                 setEditingProduct(product)
                 setIsCreating(false)
-                window.scrollTo({ top: 0, behavior: "smooth" })
+                setTimeout(() => {
+                  document.getElementById('product-form-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }, 50)
               }}
               onDelete={(id) => deleteProduct(id)}
             />

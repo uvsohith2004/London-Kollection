@@ -203,13 +203,13 @@ export function ImageCarousel({ images }: { images: HeroSlide[] }) {
               className={cn(
                 "transition-all duration-300 ease-in-out border border-slate-400 flex items-center justify-center text-[10px]",
                 images[index]?.mediaType === "video"
-                  ? "w-6 h-6 rounded-full" 
+                  ? "w-6 h-6 rounded-full border-none" 
                   : (selectedIndex === index ? "bg-primary w-4 h-2 rounded-full" : "bg-primary/50 hover:bg-primary/75 w-2 h-2 rounded-full")
               )}
               onClick={() => scrollTo(index)}
               aria-label={`Go to slide ${index + 1}`}
             >
-              {images[index]?.mediaType === "video" && <Play className="w-3 h-3 text-primary-foreground fill-current" />}
+              {images[index]?.mediaType === "video" && <Play className={cn(" h-3 text-white " ,selectedIndex === index ? "fill-white" : "fill-none")} />}
             </button>
           ))}
         </div>

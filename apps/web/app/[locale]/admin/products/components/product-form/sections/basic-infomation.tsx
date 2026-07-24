@@ -174,8 +174,7 @@ export function BasicInformation({ form, isEditing }: BasicInformationProps) {
           </Field>
         </div>
         
-        {/* ROW 4: Full Description */}
-        {/* FIX: Added min-w-0 to the wrapper */}
+   
         <div className="w-full min-w-0">
           <Field className="space-y-2">
             <div className="flex items-center justify-between">
@@ -185,16 +184,28 @@ export function BasicInformation({ form, isEditing }: BasicInformationProps) {
               </span>
             </div>
             <div className="w-full">
-                 <Textarea 
-              id="description" 
-              placeholder="Detailed product information..." 
-              maxLength={1000}
-              {...form.register("description")} 
-              rows={10}
-              ref={TextareaInputRef}
-              onInput={handleInput}
-              className=" w-full min-w-0 resize-none  warp-break-word p-4 text-base sm:text-sm" 
-            />
+              {(() => {
+                const { ref, onChange, ...rest } = form.register("description");
+                return (
+                  <Textarea 
+                    id="description" 
+                    placeholder="Detailed product information..." 
+                    maxLength={1000}
+                    {...rest}
+                    onChange={(e) => {
+                      onChange(e);
+                      handleInput();
+                    }}
+                    ref={(e) => {
+                      ref(e);
+                      // @ts-ignore
+                      TextareaInputRef.current = e;
+                    }}
+                    rows={10}
+                    className="w-full min-w-0 resize-none warp-break-word p-4 text-base sm:text-sm" 
+                  />
+                )
+              })()}
             </div>
             <FieldError errors={[form.formState.errors.description]} />
           </Field>

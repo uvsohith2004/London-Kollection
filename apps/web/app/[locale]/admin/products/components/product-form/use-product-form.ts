@@ -82,18 +82,19 @@ export function useProductForm(initialData?: any, onSuccess?: () => void) {
       discount: initialData?.discount ? Number(initialData.discount) : undefined,
       categoryId: initialData?.categoryId || "",
       taxClassId: initialData?.taxClassId || "",
-      collections: initialData?.collection?.map((c: any) => ({ label: c.name || c.title, value: c.id })) || [],
-      occasions: initialData?.occasions?.map((o: any) => ({ label: o.name || o.title, value: o.id })) || [],
-      options: initialData?.options?.map((opt: any) => ({
+      collections: Array.isArray(initialData?.collection) ? initialData.collection.map((c: any) => ({ label: c.name || c.title, value: c.id })) 
+        : Array.isArray(initialData?.collections) ? initialData.collections.map((c: any) => ({ label: c.name || c.title, value: c.id })) : [],
+      occasions: Array.isArray(initialData?.occasions) ? initialData.occasions.map((o: any) => ({ label: o.name || o.title, value: o.id })) : [],
+      options: Array.isArray(initialData?.options) ? initialData.options.map((opt: any) => ({
         name: opt.name,
-        values: Array.isArray(opt.values) ? opt.values : (opt.values ? opt.values.split(',').map((v: string) => v.trim()) : [])
-      })) || [],
-      variants: initialData?.variants?.length ? initialData?.variants?.map((v: any) => ({
+        values: Array.isArray(opt.values) ? opt.values : (typeof opt.values === 'string' ? opt.values.split(',').map((v: string) => v.trim()) : [])
+      })) : [],
+      variants: Array.isArray(initialData?.variants) && initialData.variants.length > 0 ? initialData.variants.map((v: any) => ({
         sku: v.sku || "",
         stock: v.stock || 0,
         price: v.price ? Number(v.price) : undefined,
         inventoryStatus: v.inventoryStatus || "in_stock",
-        images: v.images?.map((img: any) => ({ url: img.url, isPrimary: img.isPrimary })) || [],
+        images: Array.isArray(v.images) ? v.images.map((img: any) => ({ url: img.url, isPrimary: img.isPrimary })) : [],
         combinationsRaw: v.optionValues ? Object.entries(v.optionValues).map(([k, val]) => `${k}:${val}`).join(", ") : ""
       })) : [{
         sku: "",
@@ -104,7 +105,9 @@ export function useProductForm(initialData?: any, onSuccess?: () => void) {
       }],
       metaTitle: initialData?.metaTitle || "",
       metaDescription: initialData?.metaDescription || "",
-      seoKeywords: initialData?.seoKeywords || [],
+      seoKeywords: Array.isArray(initialData?.seoKeywords) 
+        ? initialData.seoKeywords 
+        : (typeof initialData?.seoKeywords === 'string' ? initialData.seoKeywords.split(',').map((k: string) => k.trim()).filter(Boolean) : []),
       weight: initialData?.weight,
       length: initialData?.length,
       width: initialData?.width,
