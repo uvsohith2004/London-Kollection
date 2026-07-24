@@ -14,7 +14,6 @@ import { HomeRecentlyViewed } from "./components/recently-viewed"
 import { HomeLookbook } from "./components/home-lookbook"
 import { HomeBrandValues } from "./components/motto/brand-values"
 import { HomeCustomerReviews } from "./components/reviews"
-import { HomeNewsletter } from "./components/newsletter/newsletter"
 import { Footer } from "@/components/footer"
 
 export default function Page() {
@@ -34,7 +33,6 @@ export default function Page() {
       lookbook={<HomeLookbook />}
       whyChooseUs={<HomeBrandValues />}
       customerReviews={<HomeCustomerReviews />}
-      newsletter={<HomeNewsletter />}
       footer={<Footer />}
     />
   )

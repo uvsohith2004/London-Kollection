@@ -15,6 +15,7 @@ export function CartClientView() {
 
   useEffect(() => {
     setMounted(true);
+    window.scrollTo(0, 0);
   }, []);
 
   if (!mounted) return null;

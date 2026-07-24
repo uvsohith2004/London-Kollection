@@ -93,7 +93,7 @@ export function Navbar() {
       </header>
 
       {/* Mobile Bottom Navigation Bar (Tab Bar) */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-t border-border/40 pb-safe shadow-[0_-5px_15px_-10px_rgba(0,0,0,0.1)]">
+      <div id="mobile-bottom-nav" className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-t border-border/40 pb-safe shadow-[0_-5px_15px_-10px_rgba(0,0,0,0.1)]">
         <nav className="flex items-center justify-around h-16 px-2">
           
           <Link href="/" className={cn(

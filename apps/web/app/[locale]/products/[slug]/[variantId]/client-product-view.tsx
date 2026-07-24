@@ -30,7 +30,8 @@ export function ClientProductView({ slug, variantId }: { slug: string; variantId
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    window.scrollTo(0, 0);
+  }, [slug, variantId]);
 
   if (!mounted || isLoading) {
     return (
